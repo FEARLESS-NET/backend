@@ -1,12 +1,12 @@
 import express from 'express';
-import * as productsControllers from '../controllers/productsControllers.js';
+import { getMenu, getOne, createMenu, updateMenu, deleteMenu } from '../controllers/productsControllers.js';
 
 const router = express.Router();
 
-router.get('/menus', productsControllers.getMenu);
-router.get('/menus/:id', productsControllers.getOne)
-router.post('/menus', productsControllers.createMenu);
-router.put('/menus/:id', productsControllers.updateMenu);
-router.delete('/menus/:id', productsControllers.deleteMenu);
+router.get('/menus', getMenu);
+router.get('/menus/:id', getOne);
+router.post('/menus', createMenu);
+router.put('/menus/:id', updateMenu);
+router.delete('/menus/:id', deleteMenu);
 
 export default router;
