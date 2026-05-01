@@ -14,18 +14,13 @@ const allowedOrigins = [
     "https://qrcode-7c3v.vercel.app" 
 ]
 
+// server.js ichida CORS qismini shunday almashtiring:
+
 app.use(cors({
-    origin: function (origin, callback) {
-        // origin mavjud bo'lmasa (masalan, Postman'da), ruxsat berish
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true)
-        } else {
-            callback(new Error('CORS xatoligi: Bu manzilga ruxsat berilmagan'))
-        }
-    },
+    origin: '*', // Hamma manzillarga ruxsat berish
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true 
-}))
+}));
 
 app.use(express.json())
 
