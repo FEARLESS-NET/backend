@@ -11,8 +11,9 @@ const PORT = process.env.PORT || 3000
 
 const allowedOrigins = [
     "http://localhost:5173", 
-    "https://qrcode-7c3v.vercel.app" 
-]
+    "https://qrcode-7c3v.vercel.app",
+    "https://qrcode-7c3v-o1ctmk9yf-leorics-projects-e9b8f6c0.vercel.app" // Xatoda chiqqan manzil
+];
 
 // server.js ichida CORS qismini shunday almashtiring:
 
