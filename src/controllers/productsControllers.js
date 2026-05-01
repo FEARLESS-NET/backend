@@ -8,7 +8,7 @@ const menus = [
 // GET ALL
 export const getMenu = (req, res) => {
   try {
-    res.json({ menus });
+    return res.json({ menus });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -20,16 +20,19 @@ export const getMenu = (req, res) => {
 // yoqsa productni
 export const getOne = (req, res) => {
   try {
-    const {id} = req.params
-    const product = menus.find(i => i.id === Number(id))
+    const { id } = req.params;
+
+    const product = menus.find(i => i.id === Number(id));
+
     if (!product) {
-      res.json({message: "product topilmadi"})
+      return res.status(404).json({ message: "product topilmadi" });
     }
-    res.json({data: product})
+
+    return res.json({ data: product });
   } catch (error) {
-    res.json({message: error.message})
+    return res.status(500).json({ message: error.message });
   }
-}
+};
 
 // CREATE
 export const createMenu = async (req, res) => {
