@@ -3,7 +3,7 @@ dotenv.config(); // ✅ Eng birinchi bo'lishi SHART
 
 import express from "express";
 import cors from "cors";
-import router from "../routes/productsRouter.js";   // ✅ src/api/server.js → src/routes/
+import router from "../routes/productsRouter.js"; 
 import connectDB from "../config/db.js";             // ✅ src/api/server.js → src/config/
 
 const app = express();
