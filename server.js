@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
-dotenv.config(); // ✅ Eng birinchi bo'lishi SHART
+dotenv.config();
 
 import express from "express";
 import cors from "cors";
-import router from "../routes/productsRouter.js"; 
-import connectDB from "../config/db.js";             // ✅ src/api/server.js → src/config/
+import router from "./routes/productsRouter.js";  // ✅ ../ → ./
+import connectDB from "./config/db.js";            // ✅ ../ → ./
 
 const app = express();
 const PORT = process.env.PORT || 3005;
