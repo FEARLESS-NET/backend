@@ -1,33 +1,25 @@
-import express from 'express'
-import productsRouter from '../routes/productsRouter.js';
-import cors from 'cors'
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
+dotenv.config(); // ✅ Eng birinchi bo'lishi SHART
 
-dotenv.config()
+import express from "express";
+import cors from "cors";
+import router from "../routes/productsRouter.js";   // ✅ src/api/server.js → src/routes/
+import connectDB from "../config/db.js";             // ✅ src/api/server.js → src/config/
 
-const app = express()
-const PORT = process.env.PORT || 3000
+const app = express();
+const PORT = process.env.PORT || 3005;
 
-
-const allowedOrigins = [
-    "http://localhost:5173", 
-    "https://qrcode-7c3v.vercel.app",
-    "https://qrcode-7c3v-o1ctmk9yf-leorics-projects-e9b8f6c0.vercel.app" 
-];
-
-// server.js ichida CORS qismini shunday almashtiring:
+connectDB();
 
 app.use(cors({
-    origin: '*', // Hamma manzillarga ruxsat berish
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true 
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
 }));
 
-app.use(express.json())
-
-// Routerlar
-app.use('/api/v1', productsRouter)
+app.use(express.json());
+app.use("/api/v1", router);
 
 app.listen(PORT, () => {
-    console.log(`Server running on: http://localhost:${PORT}`)
-})
+  console.log(`✅ Server ishga tushdi: http://localhost:${PORT}`);
+});
