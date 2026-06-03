@@ -1,4 +1,4 @@
-import Menu from "../models/Menu.js"; 
+import Menu from "./Menu.js";
 
 // GET ALL — barcha menularni olish
 export const getMenu = async (req, res) => {
