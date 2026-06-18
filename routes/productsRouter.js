@@ -1,4 +1,6 @@
 import express from "express";
+import upload from "../middleware/upload.js";
+
 import {
   getMenu,
   getOne,
@@ -9,10 +11,21 @@ import {
 
 const router = express.Router();
 
-router.get("/menus", getMenu);           // GET    /api/v1/menus
-router.get("/menus/:id", getOne);        // GET    /api/v1/menus/:id
-router.post("/menus", createMenu);       // POST   /api/v1/menus
-router.put("/menus/:id", updateMenu);    // PUT    /api/v1/menus/:id
-router.delete("/menus/:id", deleteMenu); // DELETE /api/v1/menus/:id
+router.get("/menus", getMenu);
+router.get("/menus/:id", getOne);
+
+router.post(
+  "/menus",
+  upload.single("image"),
+  createMenu
+);
+
+router.put(
+  "/menus/:id",
+  upload.single("image"),
+  updateMenu
+);
+
+router.delete("/menus/:id", deleteMenu);
 
 export default router;

@@ -3,10 +3,10 @@ import Menu from "../models/menu.js";
 // GET ALL — barcha menularni olish
 export const getMenu = async (req, res) => {
   try {
-    const menus = await Menu.find();
-    res.json({ menus });
+    const menus = await Menu.find().sort({ createdAt: -1 });
+    res.json({ success: true, menus });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -14,49 +14,80 @@ export const getMenu = async (req, res) => {
 export const getOne = async (req, res) => {
   try {
     const menu = await Menu.findById(req.params.id);
-
     if (!menu) {
-      return res.status(404).json({ message: "Menu topilmadi" });
+      return res.status(404).json({ success: false, message: "Menu topilmadi" });
     }
-
-    res.json({ data: menu });
+    res.json({ success: true, data: menu });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // CREATE — yangi menu yaratish
 export const createMenu = async (req, res) => {
   try {
-    const menu = await Menu.create(req.body);
+    const menuData = {
+      name: req.body.name,
+      price: Number(req.body.price),
+      retsept: req.body.retsept || "",
+      category: req.body.category || "Boshqa",
+      image: req.file ? `/uploads/${req.file.filename}` : "",
+    };
+
+    const menu = await Menu.create(menuData);
+
     res.status(201).json({
-      message: "Yangi menu yaratildi ✅",
+      success: true,
+      message: "Menu yaratildi ✅",
       menu,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create menu error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // UPDATE — menuni yangilash
 export const updateMenu = async (req, res) => {
   try {
+    const data = {
+      name: req.body.name,
+      price: Number(req.body.price),
+      retsept: req.body.retsept || "",
+      category: req.body.category || "Boshqa",
+    };
+
+    if (req.file) {
+      data.image = `/uploads/${req.file.filename}`;
+    }
+
     const updatedMenu = await Menu.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true, runValidators: true } // ✅ runValidators: validatsiyani yangilashda ham ishlatish
+      data,
+      {
+        new: true,
+        runValidators: true,
+      }
     );
 
     if (!updatedMenu) {
-      return res.status(404).json({ message: "Menu topilmadi" });
+      return res.status(404).json({
+        success: false,
+        message: "Menu topilmadi",
+      });
     }
 
     res.json({
+      success: true,
       message: "Menu yangilandi ✅",
-      updatedMenu,
+      menu: updatedMenu,
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -66,14 +97,15 @@ export const deleteMenu = async (req, res) => {
     const deletedMenu = await Menu.findByIdAndDelete(req.params.id);
 
     if (!deletedMenu) {
-      return res.status(404).json({ message: "Menu topilmadi" });
+      return res.status(404).json({ success: false, message: "Menu topilmadi" });
     }
 
     res.json({
+      success: true,
       message: "Menu o'chirildi ✅",
       id: req.params.id,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

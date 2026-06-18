@@ -28,7 +28,6 @@ const menuSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Model qayta yuklanishining oldini olish (nodemon uchun muhim)
 const Menu = mongoose.models.Menu || mongoose.model("Menu", menuSchema);
 
 export default Menu;
