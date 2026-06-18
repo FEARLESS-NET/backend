@@ -31,11 +31,9 @@ connectDB();
 // backend/server.js
 app.use(cors({
   origin: [
-    "https://frontend-2.onrender.com",  // Frontend Render URL
-    "http://localhost:5173",            // Local development
-    "http://localhost:3000",
-    "https://your-netlify-app.netlify.app", // Netlify
-    "https://your-vercel-app.vercel.app"    // Vercel
+    "https://restaurant-frontend.onrender.com",  // Frontend URL
+    "http://localhost:5173",
+    "http://localhost:3000"
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
