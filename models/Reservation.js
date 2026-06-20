@@ -30,6 +30,25 @@ const reservationSchema = new mongoose.Schema(
       required: [true, "Mehmonlar soni kiritilishi shart"],
       min: [1, "Kamida 1 mehmon bo'lishi kerak"],
     },
+    // ✅ Lokatsiya (location) qo'shildi
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+        index: "2dsphere",
+      },
+    },
+    // ✅ Dine-in uchun qo'shimcha maydon
+    diningArea: {
+      type: String,
+      enum: ["main_hall", "terrace", "vip_room", "garden"],
+      default: "main_hall",
+    },
     note: {
       type: String,
       trim: true,
@@ -42,6 +61,9 @@ const reservationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Lokatsiya indeksi
+reservationSchema.index({ location: "2dsphere" });
 
 const Reservation = mongoose.models.Reservation || mongoose.model("Reservation", reservationSchema);
 

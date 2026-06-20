@@ -49,6 +49,24 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // ✅ Lokatsiya (location)
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+        index: "2dsphere",
+      },
+    },
+    // ✅ Dine-in uchun stol raqami
+    tableNumber: {
+      type: Number,
+      default: null,
+    },
     note: {
       type: String,
       trim: true,
@@ -58,9 +76,45 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "preparing", "ready", "cancelled"],
       default: "pending",
     },
+    // ✅ To'lov maydonlari
+    paymentMethod: {
+      type: String,
+      enum: ['cash', 'click', 'payme', 'uzumbank'],
+      default: 'cash',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed'],
+      default: 'pending',
+    },
+    paymentId: {
+      type: String,
+      default: null,
+    },
+    // ✅ Yetkazib berish holati
+    deliveryStatus: {
+      type: String,
+      enum: ['pending', 'preparing', 'on_the_way', 'delivered'],
+      default: 'pending',
+    },
+    deliveryTime: {
+      type: String,
+      default: null,
+    },
+    courierName: {
+      type: String,
+      default: null,
+    },
+    courierPhone: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+// Lokatsiya indeksi
+orderSchema.index({ location: "2dsphere" });
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 

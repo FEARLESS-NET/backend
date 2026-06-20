@@ -1,18 +1,37 @@
-import express from "express";
+import express from 'express';
 import {
   getOrders,
   getOneOrder,
   createOrder,
   updateOrderStatus,
   deleteOrder,
-} from "../controllers/orderController.js";
+  updatePaymentStatus,
+  updateDeliveryStatus,
+  getOrderByPhone,
+  deleteAllOrders,
+  deleteOrdersByStatus,
+  deleteOldOrders,
+} from '../controllers/orderController.js';
 
 const router = express.Router();
 
-router.get("/orders", getOrders);           // ?status=pending
-router.get("/orders/:id", getOneOrder);
-router.post("/orders", createOrder);
-router.patch("/orders/:id/status", updateOrderStatus);
-router.delete("/orders/:id", deleteOrder);
+// GET
+router.get('/orders', getOrders);
+router.get('/orders/:id', getOneOrder);
+router.get('/orders/phone/:phone', getOrderByPhone);
+
+// POST
+router.post('/orders', createOrder);
+
+// PATCH (UPDATE)
+router.patch('/orders/:id/status', updateOrderStatus);
+router.patch('/orders/:id/payment', updatePaymentStatus);
+router.patch('/orders/:id/delivery', updateDeliveryStatus);
+
+// DELETE
+router.delete('/orders/:id', deleteOrder);
+router.delete('/orders', deleteAllOrders);
+router.delete('/orders/status/:status', deleteOrdersByStatus);
+router.delete('/orders/old/:days', deleteOldOrders);
 
 export default router;

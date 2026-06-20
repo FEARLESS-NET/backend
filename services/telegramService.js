@@ -1,98 +1,117 @@
 import dotenv from "dotenv";
+import fetch from "node-fetch";
+
 dotenv.config();
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-console.log("🔍 Telegram sozlamalari tekshirilmoqda...");
-console.log("TELEGRAM_TOKEN:", TELEGRAM_TOKEN ? "✅ Mavjud" : "❌ Mavjud emas");
-console.log("TELEGRAM_CHAT_ID:", CHAT_ID ? "✅ Mavjud" : "❌ Mavjud emas");
-
-const sendTelegramMessage = async (text) => {
+// ─── Asosiy xabar yuboruvchi ───────────────────────────────────────────────
+const sendMessage = async (text) => {
+  if (!BOT_TOKEN || !CHAT_ID) {
+    console.log("⚠️ Telegram sozlanmagan, xabar yuborilmadi");
+    return;
+  }
   try {
-    if (!TELEGRAM_TOKEN || !CHAT_ID) {
-      console.log("⚠️ Telegram sozlamalari topilmadi, xabar yuborilmadi");
-      console.log("   TELEGRAM_TOKEN:", TELEGRAM_TOKEN || "❌");
-      console.log("   TELEGRAM_CHAT_ID:", CHAT_ID || "❌");
-      return;
-    }
-
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-    console.log(`📤 Telegram xabar yuborilmoqda: ${url}`);
-    
-    const response = await fetch(url, {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: text,
-        parse_mode: "HTML",
-      }),
+      body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "HTML" }),
     });
-    
-    const data = await response.json();
-    console.log("📥 Telegram javobi:", data);
-    
-    if (!data.ok) {
-      console.error("❌ Telegram xabar yuborishda xato:", data);
-    } else {
-      console.log("✅ Telegram xabar yuborildi!");
-    }
-  } catch (error) {
-    console.error("❌ Telegram servis xatosi:", error.message);
+    const data = await res.json();
+    if (!data.ok) console.error("❌ Telegram xato:", data.description);
+    else console.log("✅ Telegram xabar yuborildi");
+  } catch (err) {
+    console.error("❌ Telegram yuborishda xato:", err.message);
   }
 };
 
-// Yangi zakaz uchun xabar
-export const sendOrderNotification = (order) => {
-  console.log("📦 Zakaz xabari tayyorlanmoqda...");
-  
+// ─── ORDER bildirishi ──────────────────────────────────────────────────────
+export const sendOrderNotification = async (order) => {
   const items = order.items
-    .map((i) => `  • ${i.name} x${i.quantity} — ${i.price * i.quantity} so'm`)
+    .map(
+      (i) =>
+        `  • ${i.name || "Taom"} x${i.quantity} = ${(
+          i.price * i.quantity
+        ).toLocaleString()} so'm`
+    )
     .join("\n");
 
-  const text = `
-🛒 <b>YANGI ZAKAZ!</b>
+  const yuborildi = new Date().toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
-👤 Mijoz: <b>${order.customerName}</b>
-📞 Tel: <b>${order.phone}</b>
-🚚 Tur: <b>${order.deliveryType === "delivery" ? "Yetkazib berish" : order.deliveryType === "takeaway" ? "Olib ketish" : "Restoranda"}</b>
-${order.address ? `📍 Manzil: ${order.address}\n` : ""}
-🍽 Taomlar:
-${items}
+  let deliveryInfo = "";
+  if (order.deliveryType === "dine-in") {
+    deliveryInfo = `🪑 Stol: #${order.tableNumber || "Belgilanmagan"}`;
+  } else if (order.deliveryType === "delivery") {
+    deliveryInfo = `📍 Manzil: ${order.address || "Kiritilmagan"}`;
+  } else if (order.deliveryType === "takeaway") {
+    deliveryInfo = `🥡 Olib ketish`;
+  }
 
-💰 Jami: <b>${order.totalPrice} so'm</b>
-${order.note ? `📝 Izoh: ${order.note}` : ""}
-⏰ Vaqt: ${new Date().toLocaleString("uz-UZ")}
-`;
+  const typeLabel =
+    order.deliveryType === "dine-in"
+      ? "🍽 Restoran"
+      : order.deliveryType === "delivery"
+      ? "🚚 Yetkazish"
+      : "🥡 Olib ketish";
 
-  console.log("📤 Zakaz xabari yuborilmoqda...");
-  return sendTelegramMessage(text);
+  const text =
+    `🛒 <b>🔥 YANGI ZAKAZ!</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👤 Mijoz: ${order.customerName}\n` +
+    `📞 Tel: ${order.phone}\n` +
+    `📦 Taomlar:\n${items}\n` +
+    `💰 Jami: ${order.totalPrice.toLocaleString()} so'm\n` +
+    `🚚 Turi: ${typeLabel}\n` +
+    (deliveryInfo ? `${deliveryInfo}\n` : "") +
+    (order.note ? `📝 Izoh: ${order.note}\n` : "") +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `⏱ Yuborildi: ${yuborildi}`;
+
+  await sendMessage(text);
 };
 
-// Yangi bron uchun xabar
-export const sendReservationNotification = (reservation, tableNumber) => {
-  console.log("📅 Bron xabari tayyorlanmoqda...");
-  
-  const text = `
-📅 <b>YANGI BRON!</b>
+// ─── RESERVATION bildirishi ────────────────────────────────────────────────
+export const sendReservationNotification = async (reservation, tableNumber) => {
+  const yuborildi = new Date().toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
-👤 Mijoz: <b>${reservation.customerName}</b>
-📞 Tel: <b>${reservation.phone}</b>
-🪑 Stol: <b>#${tableNumber || "Noma'lum"}</b>
-👥 Mehmonlar: <b>${reservation.guestCount} kishi</b>
-📆 Sana: <b>${reservation.date}</b>
-⏰ Vaqt: <b>${reservation.time}</b>
-${reservation.note ? `📝 Izoh: ${reservation.note}` : ""}
-🕐 Yuborildi: ${new Date().toLocaleString("uz-UZ")}
-`;
+  const diningAreaMap = {
+    main_hall: "🏛 Asosiy zal",
+    terrace: "🌿 Terassa",
+    vip_room: "👑 VIP xona",
+    garden: "🌳 Bog'",
+  };
+  const diningAreaText =
+    diningAreaMap[reservation.diningArea] || reservation.diningArea;
 
-  console.log("📤 Bron xabari yuborilmoqda...");
-  return sendTelegramMessage(text);
-};
+  const text =
+    `📅 <b>📌 YANGI BRON!</b>\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👤 Mijoz: ${reservation.customerName}\n` +
+    `📞 Tel: ${reservation.phone}\n` +
+    `🪑 Stol: #${tableNumber}\n` +
+    `👥 Mehmonlar: ${reservation.guestCount} kishi\n` +
+    `📆 Sana: ${reservation.date}\n` +
+    `🕐 Vaqt: ${reservation.time}\n` +
+    `📍 Hudud: ${diningAreaText}\n` +
+    (reservation.note ? `📝 Izoh: ${reservation.note}\n` : "") +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `⏱ Yuborildi: ${yuborildi}`;
 
-// Test funksiyasi
-export const testTelegram = async () => {
-  console.log("🧪 Telegram test xabari yuborilmoqda...");
-  return sendTelegramMessage("✅ Bot ishlayapti! Test xabar");
+  await sendMessage(text);
 };

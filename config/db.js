@@ -2,16 +2,14 @@ import mongoose from "mongoose";
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/restaurant_db", {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const conn = await mongoose.connect(
+      process.env.MONGO_URI || "mongodb://localhost:27017/restaurant_db"
+    );
     console.log(`✅ MongoDB ulandi: ${conn.connection.host}`);
     console.log(`📀 Database: ${conn.connection.name}`);
   } catch (error) {
     console.error("❌ MongoDB ulanish xatosi:", error.message);
-    console.log("⚠️ Ma'lumotlar bazasiga ulanmadi, lekin server ishlashda davom etadi...");
-    // process.exit(1); // Ishlab chiqishda comentga oling
+    process.exit(1);
   }
 };
 

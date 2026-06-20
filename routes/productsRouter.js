@@ -7,7 +7,7 @@ import {
   createMenu,
   updateMenu,
   deleteMenu,
-} from "../controllers/productsControllers.js";
+} from "../controllers/productsController.js";
 
 const router = express.Router();
 

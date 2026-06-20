@@ -19,6 +19,7 @@ const tableSchema = new mongoose.Schema(
     location: {
       type: String,
       trim: true,
+      // masalan: "Ichki zal", "Tashqi terassa"
     },
   },
   { timestamps: true }

@@ -12,15 +12,15 @@ const storage = multer.diskStorage({
 
 const fileFilter = (req, file, cb) => {
   const allowed = ["image/jpeg", "image/png", "image/webp"];
-
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Faqat rasm yuklash mumkin"));
+    cb(new Error("Faqat rasm yuklash mumkin (jpeg, png, webp)"));
   }
 };
 
 export default multer({
   storage,
   fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // ✅ Maksimal 5MB
 });

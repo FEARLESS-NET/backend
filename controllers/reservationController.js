@@ -5,10 +5,11 @@ import { sendReservationNotification } from "../services/telegramService.js";
 // Barcha bronlar
 export const getReservations = async (req, res) => {
   try {
-    const { date, status } = req.query;
+    const { date, status, diningArea } = req.query;
     const filter = {};
     if (date) filter.date = date;
     if (status) filter.status = status;
+    if (diningArea) filter.diningArea = diningArea;
 
     const reservations = await Reservation.find(filter)
       .populate("tableId", "number capacity location")
@@ -38,7 +39,7 @@ export const getOneReservation = async (req, res) => {
 // Yangi bron yaratish
 export const createReservation = async (req, res) => {
   try {
-    const { tableId, date, time, guestCount } = req.body;
+    const { tableId, date, time, guestCount, location, diningArea } = req.body;
 
     // Stol mavjudligini tekshirish
     const table = await Table.findById(tableId);
@@ -68,7 +69,14 @@ export const createReservation = async (req, res) => {
       });
     }
 
-    const reservation = await Reservation.create(req.body);
+    // ✅ Lokatsiya va diningArea qo'shildi
+    const reservationData = {
+      ...req.body,
+      location: location || { type: "Point", coordinates: [0, 0] },
+      diningArea: diningArea || "main_hall",
+    };
+
+    const reservation = await Reservation.create(reservationData);
 
     // Telegram xabar
     await sendReservationNotification(reservation, table.number);
@@ -108,6 +116,37 @@ export const cancelReservation = async (req, res) => {
     if (!reservation)
       return res.status(404).json({ success: false, message: "Bron topilmadi" });
     res.json({ success: true, message: "Bron bekor qilindi", reservation });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Lokatsiya bo'yicha yaqin bronlarni olish
+export const getNearbyReservations = async (req, res) => {
+  try {
+    const { lng, lat, maxDistance = 5000 } = req.query;
+
+    if (!lng || !lat) {
+      return res.status(400).json({
+        success: false,
+        message: "Koordinatalar kiritilishi shart (lng, lat)",
+      });
+    }
+
+    const reservations = await Reservation.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)],
+          },
+          $maxDistance: parseInt(maxDistance),
+        },
+      },
+      status: { $ne: "cancelled" },
+    }).populate("tableId", "number capacity location");
+
+    res.json({ success: true, count: reservations.length, reservations });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
