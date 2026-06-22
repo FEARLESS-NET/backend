@@ -60,7 +60,7 @@ const startServer = async () => {
     app.use(
       cors({
         origin: [
-          "https://restaurant-frontend.onrender.com",
+          "https://qrcode-wc4q.vercel.app",
           "http://localhost:5173",
           "http://localhost:3005",
           "http://127.0.0.1:5173",
