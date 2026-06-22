@@ -38,6 +38,15 @@ if (!fs.existsSync("uploads")) {
 const app = express();
 const PORT = process.env.PORT || 3005;
 
+// ✅ Root route - serverni ishlayotganligini tekshirish uchun
+app.get('/', (req, res) => {
+  res.json({ 
+    message: "Restaurant API is running ✅", 
+    version: "1.0.0",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ─── ✅ SERVERNI ISHGA TUSHIRISH ──────────────────────────────────────────
 const startServer = async () => {
   try {
@@ -75,13 +84,7 @@ const startServer = async () => {
     app.use("/api/v1", reportRouter);
     app.use("/api/v1", telegramRoutes);
 
-    app.get("/", (req, res) => {
-      res.json({ 
-        message: "Restaurant API is running ✅", 
-        version: "1.0.0",
-        timestamp: new Date().toISOString()
-      });
-    });
+    
 
     // 404 handler
     app.use((req, res) => {
