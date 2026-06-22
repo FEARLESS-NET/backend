@@ -1,45 +1,48 @@
 import Order from "../models/Order.js";
 import Reservation from "../models/Reservation.js";
 import Report from "../models/Report.js";
+import { sendResetNotification } from "../services/telegramService.js";
 
-// ─── HISOBOT YARATISH ──────────────────────────────────────────────────────
-const generateReport = async (type, period) => {
+// ─── KUNLIK SANANI OLISH ──────────────────────────────────────────────────
+const getDailyDateRange = () => {
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(now);
+  endDate.setHours(23, 59, 59, 999);
+  return { startDate, endDate };
+};
+
+// ─── HISOBOT NOMERINI OLISH ────────────────────────────────────────────────
+const getNextReportNumber = async () => {
+  const lastReport = await Report.findOne().sort({ reportNumber: -1 });
+  return lastReport ? lastReport.reportNumber + 1 : 1;
+};
+
+// ─── ✅ KUNLIK HISOBOT MA'LUMOTLARINI HISOBLASH ──────────────────────────
+const generateDailyReport = async () => {
   try {
-    let startDate, endDate;
+    const { startDate, endDate } = getDailyDateRange();
 
-    if (type === "daily") {
-      startDate = new Date(period);
-      endDate = new Date(period);
-      endDate.setDate(endDate.getDate() + 1);
-    } else if (type === "weekly") {
-      const [year, week] = period.split("-W").map(Number);
-      const firstDay = new Date(year, 0, 1);
-      const days = (week - 1) * 7;
-      startDate = new Date(firstDay.setDate(firstDay.getDate() + days));
-      endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 7);
-    } else if (type === "monthly") {
-      const [year, month] = period.split("-").map(Number);
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 1);
-    }
+    console.log(`📊 Kunlik hisobot hisoblanmoqda...`);
+    console.log(`   📅 Davr: ${startDate.toISOString()} - ${endDate.toISOString()}`);
 
-    // Orders
     const orders = await Order.find({
-      createdAt: { $gte: startDate, $lt: endDate },
+      createdAt: { $gte: startDate, $lte: endDate },
     });
 
     const reservations = await Reservation.find({
-      createdAt: { $gte: startDate, $lt: endDate },
+      createdAt: { $gte: startDate, $lte: endDate },
     });
 
-    // Statistika
+    console.log(`   📦 Zakazlar: ${orders.length} ta`);
+    console.log(`   📋 Bronlar: ${reservations.length} ta`);
+
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
     const totalReservations = reservations.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    // Status bo'yicha
     const ordersByStatus = {
       pending: orders.filter((o) => o.status === "pending").length,
       confirmed: orders.filter((o) => o.status === "confirmed").length,
@@ -48,14 +51,12 @@ const generateReport = async (type, period) => {
       cancelled: orders.filter((o) => o.status === "cancelled").length,
     };
 
-    // Delivery type bo'yicha
     const ordersByDeliveryType = {
       "dine-in": orders.filter((o) => o.deliveryType === "dine-in").length,
       takeaway: orders.filter((o) => o.deliveryType === "takeaway").length,
       delivery: orders.filter((o) => o.deliveryType === "delivery").length,
     };
 
-    // Eng ko'p sotilgan taomlar
     const itemMap = {};
     orders.forEach((order) => {
       order.items.forEach((item) => {
@@ -72,7 +73,6 @@ const generateReport = async (type, period) => {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10);
 
-    // Eng ko'p zakaz qilgan mijozlar
     const customerMap = {};
     orders.forEach((order) => {
       const key = order.phone;
@@ -87,9 +87,13 @@ const generateReport = async (type, period) => {
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 5);
 
+    const period = startDate.toISOString().split("T")[0];
+
     return {
-      type,
+      type: "daily",
       period,
+      startDate,
+      endDate,
       data: {
         totalOrders,
         totalRevenue,
@@ -102,53 +106,204 @@ const generateReport = async (type, period) => {
       },
     };
   } catch (error) {
-    console.error("Report generation error:", error);
+    console.error("Daily report generation error:", error);
     throw error;
   }
 };
 
-// ─── HISOBOT YARATISH VA SAQLASH ──────────────────────────────────────────
-export const createReport = async (req, res) => {
-  try {
-    const { type } = req.params; // daily, weekly, monthly
-    const now = new Date();
+// ─── ✅ KUNLIK HISOBOTNI YANGILASH ────────────────────────────────────────
+// ❌ TELEGRAMGA XABAR YUBORILMAYDI (faqat bazaga yozadi)
+const upsertDailyReport = async () => {
+  const reportData = await generateDailyReport();
 
-    let period;
-    if (type === "daily") {
-      period = now.toISOString().split("T")[0];
-    } else if (type === "weekly") {
-      const year = now.getFullYear();
-      const week = Math.ceil(((now - new Date(year, 0, 1)) / 86400000 + 1) / 7);
-      period = `${year}-W${String(week).padStart(2, "0")}`;
-    } else if (type === "monthly") {
-      period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    } else {
-      return res.status(400).json({ success: false, message: "Noto'g'ri tur" });
+  let report = await Report.findOne({ type: "daily", period: reportData.period });
+
+  if (report) {
+    report.data = reportData.data;
+    report.startDate = reportData.startDate;
+    report.endDate = reportData.endDate;
+    await report.save();
+    console.log(`✅ Kunlik hisobot yangilandi (joriy: ${reportData.data.totalOrders} zakaz)`);
+  } else {
+    const reportNumber = await getNextReportNumber();
+    report = await Report.create({
+      ...reportData,
+      uniqueId: `daily-${Date.now()}`,
+      reportNumber,
+    });
+    console.log(`✅ Yangi kunlik hisobot yaratildi (№${reportNumber})`);
+  }
+
+  return report;
+};
+
+// ─── ✅ KUNLIK HISOBOTNI 0 DAN YARATISH (RESET UCHUN) ──────────────────────
+const createZeroDailyReport = async () => {
+  const { startDate, endDate } = getDailyDateRange();
+  const reportNumber = await getNextReportNumber();
+  const period = startDate.toISOString().split("T")[0];
+
+  return await Report.create({
+    reportNumber,
+    type: "daily",
+    period,
+    startDate,
+    endDate,
+    uniqueId: `daily-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    data: {
+      totalOrders: 0,
+      totalRevenue: 0,
+      totalReservations: 0,
+      averageOrderValue: 0,
+      ordersByStatus: {
+        pending: 0,
+        confirmed: 0,
+        preparing: 0,
+        ready: 0,
+        cancelled: 0,
+      },
+      ordersByDeliveryType: {
+        "dine-in": 0,
+        takeaway: 0,
+        delivery: 0,
+      },
+      topItems: [],
+      topCustomers: [],
+    },
+    isActive: true,
+  });
+};
+
+// ─── ✅ ZAKAZ/BRON YARATILGANDA — KUNLIK HISOBOTNI YANGILAYDI ────────────
+// ❌ TELEGRAMGA XABAR YUBORILMAYDI (faqat bazaga yozadi)
+export const generateDailyReportOnOrder = async () => {
+  try {
+    console.log("📊 ===== KUNLIK HISOBOT YANGILANMOQDA =====");
+    await upsertDailyReport();
+    console.log("✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)");
+  } catch (error) {
+    console.error("❌ Hisobot yaratishda xatolik:", error);
+    throw error;
+  }
+};
+
+// ─── ✅ KUNLIK HISOBOTNI 0 GA TIKLAYDI ────────────────────────────────────
+// ✅ TELEGRAMGA HISOBOT XABARI KELADI (RESET BOSILGANDA)
+export const resetDailyReport = async (req, res) => {
+  try {
+    console.log("🔄 ===== KUNLIK HISOBOT 0 GA TIKLANMOQDA =====");
+
+    // ✅ RESET QILISH OLDIDAGI MA'LUMOTLARNI OLAMIZ
+    const beforeReset = await generateDailyReport();
+    console.log(`📊 Reset oldidagi ma'lumotlar: ${beforeReset.data.totalOrders} zakaz, ${beforeReset.data.totalRevenue} so'm`);
+
+    // 1. Eski hisobotni o'chirish
+    const deleted = await Report.deleteMany({ type: "daily" });
+    console.log(`🗑 ${deleted.deletedCount} ta eski kunlik hisobot o'chirildi`);
+
+    // 2. 0 hisobot yaratish
+    const zeroReport = await createZeroDailyReport();
+    console.log(`✅ Yangi 0 kunlik hisobot yaratildi (№${zeroReport.reportNumber})`);
+
+    // 3. ✅ RESET HAQIDA XABAR YUBORISH (kunlik daromad va zakazlar bilan)
+    try {
+      await sendResetNotification(beforeReset);
+      console.log(`✅ Reset haqida Telegramga xabar yuborildi`);
+    } catch (telegramErr) {
+      console.warn('⚠️ Telegram xabar yuborilmadi:', telegramErr.message);
     }
 
-    // Eski hisobotni o'chirish (agar mavjud bo'lsa)
-    await Report.findOneAndDelete({ type, period });
+    res.json({
+      success: true,
+      message: `✅ Kunlik hisobot 0 ga tiklandi!`,
+      deletedCount: deleted.deletedCount,
+      report: zeroReport,
+      beforeReset: beforeReset.data,
+    });
 
-    // Yangi hisobot yaratish
-    const reportData = await generateReport(type, period);
-    const report = await Report.create(reportData);
-
-    res.status(201).json({ success: true, report });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Reset xatosi:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Reset qilishda xatolik yuz berdi'
+    });
+  }
+};
+
+// ─── YAKUNLANGAN ZAKAZLARNI O'CHIRISH ──────────────────────────────────
+export const deleteCompletedOrdersAndUpdateDaily = async (req, res) => {
+  try {
+    console.log("🔄 ===== YAKUNLANGAN ZAKAZLAR O'CHIRILMOQDA =====");
+
+    const result = await Order.deleteMany({
+      $or: [
+        { status: "ready" },
+        { deliveryStatus: "delivered" }
+      ]
+    });
+    console.log(`🗑 ${result.deletedCount} ta yakunlangan zakaz o'chirildi`);
+
+    await upsertDailyReport();
+    console.log(`✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)`);
+
+    res.json({
+      success: true,
+      message: `✅ Yakunlangan zakazlar o'chirildi (${result.deletedCount} ta)!\n✅ Kunlik hisobot yangilandi!`,
+      deletedCount: result.deletedCount,
+    });
+
+  } catch (error) {
+    console.error('❌ Xatolik:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Xatolik yuz berdi'
+    });
+  }
+};
+
+// ─── YAKUNLANGAN BRONLARNI O'CHIRISH ──────────────────────────────────
+export const deleteCompletedReservationsAndUpdateDaily = async (req, res) => {
+  try {
+    console.log("🔄 ===== YAKUNLANGAN BRONLAR O'CHIRILMOQDA =====");
+
+    const result = await Reservation.deleteMany({
+      status: { $in: ["confirmed", "cancelled"] }
+    });
+    console.log(`🗑 ${result.deletedCount} ta yakunlangan bron o'chirildi`);
+
+    await upsertDailyReport();
+    console.log(`✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)`);
+
+    res.json({
+      success: true,
+      message: `✅ Yakunlangan bronlar o'chirildi (${result.deletedCount} ta)!\n✅ Kunlik hisobot yangilandi!`,
+      deletedCount: result.deletedCount,
+    });
+
+  } catch (error) {
+    console.error('❌ Xatolik:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Xatolik yuz berdi'
+    });
   }
 };
 
 // ─── BARCHA HISOBOTLARNI OLISH ────────────────────────────────────────────
 export const getReports = async (req, res) => {
   try {
-    const { type } = req.query;
-    const filter = {};
-    if (type) filter.type = type;
-    filter.isActive = true;
+    const { limit = 100 } = req.query;
 
-    const reports = await Report.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, count: reports.length, reports });
+    const reports = await Report.find({ type: "daily" })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      count: reports.length,
+      reports,
+      total: await Report.countDocuments({ type: "daily" })
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -167,56 +322,32 @@ export const getOneReport = async (req, res) => {
   }
 };
 
-// ─── HISOBOTNI O'CHIRISH (RUCHNOY TOZALASH) ──────────────────────────────
+// ─── HISOBOTNI O'CHIRISH ──────────────────────────────────────────────────
 export const deleteReport = async (req, res) => {
   try {
     const report = await Report.findByIdAndDelete(req.params.id);
     if (!report) {
       return res.status(404).json({ success: false, message: "Hisobot topilmadi" });
     }
-    res.json({ success: true, message: "Hisobot o'chirildi" });
+    res.json({
+      success: true,
+      message: `✅ Hisobot №${report.reportNumber} o'chirildi!`
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ─── BARCHA HISOBOTLARNI O'CHIRISH (RUCHNOY TOZALASH) ────────────────────
+// ─── BARCHA HISOBOTLARNI O'CHIRISH ────────────────────────────────────────
 export const deleteAllReports = async (req, res) => {
   try {
-    await Report.deleteMany({});
-    res.json({ success: true, message: "Barcha hisobotlar o'chirildi" });
+    const result = await Report.deleteMany({ type: "daily" });
+    res.json({
+      success: true,
+      message: `✅ Barcha kunlik hisobotlar o'chirildi (${result.deletedCount} ta)!`,
+      deletedCount: result.deletedCount
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// ─── HISOBOTLARNI AVTOMATIK YARATISH ──────────────────────────────────────
-export const autoGenerateReports = async () => {
-  try {
-    const now = new Date();
-    const types = ["daily", "weekly", "monthly"];
-
-    for (const type of types) {
-      let period;
-      if (type === "daily") {
-        period = now.toISOString().split("T")[0];
-      } else if (type === "weekly") {
-        const year = now.getFullYear();
-        const week = Math.ceil(((now - new Date(year, 0, 1)) / 86400000 + 1) / 7);
-        period = `${year}-W${String(week).padStart(2, "0")}`;
-      } else if (type === "monthly") {
-        period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      }
-
-      // Eski hisobotni o'chirish
-      await Report.findOneAndDelete({ type, period });
-
-      // Yangi hisobot yaratish
-      const reportData = await generateReport(type, period);
-      await Report.create(reportData);
-      console.log(`✅ ${type} hisobot yaratildi: ${period}`);
-    }
-  } catch (error) {
-    console.error("❌ Auto report error:", error);
   }
 };

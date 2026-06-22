@@ -4,17 +4,21 @@ import {
   getOneReservation,
   createReservation,
   updateReservation,
-  cancelReservation,
-  getNearbyReservations, // ✅ Yangi
+  cancelReservation,        // ✅ BU EXPORT QILINGAN
+  getNearbyReservations,
+  deleteCompletedReservations,
+  deleteAllReservationsForce,
 } from "../controllers/reservationController.js";
 
 const router = express.Router();
 
-router.get("/reservations", getReservations);        // ?date=2024-12-01&status=pending&diningArea=main_hall
-router.get("/reservations/nearby", getNearbyReservations); // ✅ Lokatsiya bo'yicha yaqin bronlar
+router.get("/reservations", getReservations);
+router.get("/reservations/nearby", getNearbyReservations);
 router.get("/reservations/:id", getOneReservation);
 router.post("/reservations", createReservation);
 router.put("/reservations/:id", updateReservation);
-router.patch("/reservations/:id/cancel", cancelReservation);
+router.patch("/reservations/:id/cancel", cancelReservation);  // ✅ BU ENDI ISHLAYDI
+router.delete("/reservations/force", deleteAllReservationsForce);
+router.delete("/reservations/completed", deleteCompletedReservations);
 
 export default router;

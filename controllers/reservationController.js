@@ -2,7 +2,7 @@ import Reservation from "../models/Reservation.js";
 import Table from "../models/Table.js";
 import { sendReservationNotification } from "../services/telegramService.js";
 
-// Barcha bronlar
+// ─── BARCHA BRONLAR ────────────────────────────────────────────────────────
 export const getReservations = async (req, res) => {
   try {
     const { date, status, diningArea } = req.query;
@@ -13,7 +13,7 @@ export const getReservations = async (req, res) => {
 
     const reservations = await Reservation.find(filter)
       .populate("tableId", "number capacity location")
-      .sort({ date: 1, time: 1 });
+      .sort({ createdAt: -1 });
 
     res.json({ success: true, count: reservations.length, reservations });
   } catch (error) {
@@ -21,7 +21,7 @@ export const getReservations = async (req, res) => {
   }
 };
 
-// Bitta bron
+// ─── BIRTA BRON ────────────────────────────────────────────────────────────
 export const getOneReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findById(req.params.id).populate(
@@ -36,17 +36,15 @@ export const getOneReservation = async (req, res) => {
   }
 };
 
-// Yangi bron yaratish
+// ─── YANGI BRON YARATISH ──────────────────────────────────────────────────
 export const createReservation = async (req, res) => {
   try {
     const { tableId, date, time, guestCount, location, diningArea } = req.body;
 
-    // Stol mavjudligini tekshirish
     const table = await Table.findById(tableId);
     if (!table)
       return res.status(404).json({ success: false, message: "Stol topilmadi" });
 
-    // Sig'im tekshirish
     if (guestCount > table.capacity) {
       return res.status(400).json({
         success: false,
@@ -54,7 +52,6 @@ export const createReservation = async (req, res) => {
       });
     }
 
-    // O'sha vaqtda bron qilinganmi?
     const conflict = await Reservation.findOne({
       tableId,
       date,
@@ -69,16 +66,22 @@ export const createReservation = async (req, res) => {
       });
     }
 
-    // ✅ Lokatsiya va diningArea qo'shildi
+    let locationData = location || { type: "Point", coordinates: [0, 0] };
+    if (location && location.coordinates) {
+      locationData = {
+        type: "Point",
+        coordinates: location.coordinates
+      };
+    }
+
     const reservationData = {
       ...req.body,
-      location: location || { type: "Point", coordinates: [0, 0] },
+      location: locationData,
       diningArea: diningArea || "main_hall",
     };
 
     const reservation = await Reservation.create(reservationData);
 
-    // Telegram xabar
     await sendReservationNotification(reservation, table.number);
 
     res.status(201).json({ success: true, reservation });
@@ -87,7 +90,7 @@ export const createReservation = async (req, res) => {
   }
 };
 
-// Bronni yangilash (status o'zgartirish)
+// ─── BRONNI YANGILASH ─────────────────────────────────────────────────────
 export const updateReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findByIdAndUpdate(
@@ -105,7 +108,7 @@ export const updateReservation = async (req, res) => {
   }
 };
 
-// Bronni bekor qilish
+// ─── BRONNI BEKOR QILISH ──────────────────────────────────────────────────
 export const cancelReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findByIdAndUpdate(
@@ -121,7 +124,7 @@ export const cancelReservation = async (req, res) => {
   }
 };
 
-// ✅ Lokatsiya bo'yicha yaqin bronlarni olish
+// ─── LOKATSIYA BO'YICHA YAQIN BRONLAR ────────────────────────────────────
 export const getNearbyReservations = async (req, res) => {
   try {
     const { lng, lat, maxDistance = 5000 } = req.query;
@@ -147,6 +150,40 @@ export const getNearbyReservations = async (req, res) => {
     }).populate("tableId", "number capacity location");
 
     res.json({ success: true, count: reservations.length, reservations });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── ✅ YAKUNLANGAN (CONFIRMED) BRONLARNI O'CHIRISH ─────────────────────
+export const deleteCompletedReservations = async (req, res) => {
+  try {
+    const result = await Reservation.deleteMany({
+      status: { $in: ["confirmed", "cancelled"] }
+    });
+
+    res.json({
+      success: true,
+      message: `✅ Yakunlangan bronlar o'chirildi (${result.deletedCount} ta)`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── ✅ ✅ BARCHA BRONLARNI BUTUNLAY O'CHIRISH ──────────────────────────
+export const deleteAllReservationsForce = async (req, res) => {
+  try {
+    const count = await Reservation.countDocuments();
+    const result = await Reservation.deleteMany({});
+    
+    res.json({
+      success: true,
+      message: `✅ Barcha ${result.deletedCount} ta bron butunlay o'chirildi!`,
+      deletedCount: result.deletedCount,
+      totalBefore: count,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

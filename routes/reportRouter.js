@@ -1,17 +1,28 @@
 import express from "express";
 import {
-  createReport,
   getReports,
   getOneReport,
   deleteReport,
   deleteAllReports,
-} from "../controllers/reportController.js";  // ✅ Yo'l to'g'ri
+  resetDailyReport,
+  deleteCompletedOrdersAndUpdateDaily,
+  deleteCompletedReservationsAndUpdateDaily,
+} from "../controllers/reportController.js";
 
 const router = express.Router();
 
+// ─── O'QISH ─────────────────────────────────────────────────────────────
 router.get("/reports", getReports);
 router.get("/reports/:id", getOneReport);
-router.post("/reports/:type", createReport);
+
+// ─── ✅ KUNLIK HISOBOTNI 0 GA TIKLAYDI ──────────────────────────────────
+router.post("/reports/reset", resetDailyReport);
+
+// ─── ✅ YAKUNLANGANLARNI O'CHIRISH + KUNLIK HISOBOTNI YANGILASH ────────
+router.post("/reports/delete-completed-orders", deleteCompletedOrdersAndUpdateDaily);
+router.post("/reports/delete-completed-reservations", deleteCompletedReservationsAndUpdateDaily);
+
+// ─── O'CHIRISH ──────────────────────────────────────────────────────────
 router.delete("/reports/:id", deleteReport);
 router.delete("/reports", deleteAllReports);
 

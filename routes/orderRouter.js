@@ -8,27 +8,33 @@ import {
   updatePaymentStatus,
   updateDeliveryStatus,
   getOrderByPhone,
+  searchOrders,
   deleteAllOrders,
   deleteOrdersByStatus,
   deleteOldOrders,
+  deleteCompletedOrders,
+  deleteAllOrdersForce,
 } from '../controllers/orderController.js';
 
 const router = express.Router();
 
-// GET
+// ─── GET ──────────────────────────────────────────────────────────────────
+router.get('/orders/search', searchOrders);
+router.get('/orders/phone/:phone', getOrderByPhone);
 router.get('/orders', getOrders);
 router.get('/orders/:id', getOneOrder);
-router.get('/orders/phone/:phone', getOrderByPhone);
 
-// POST
+// ─── POST ─────────────────────────────────────────────────────────────────
 router.post('/orders', createOrder);
 
-// PATCH (UPDATE)
+// ─── PATCH (UPDATE) ──────────────────────────────────────────────────────
 router.patch('/orders/:id/status', updateOrderStatus);
 router.patch('/orders/:id/payment', updatePaymentStatus);
 router.patch('/orders/:id/delivery', updateDeliveryStatus);
 
-// DELETE
+// ─── DELETE ──────────────────────────────────────────────────────────────
+router.delete('/orders/force', deleteAllOrdersForce);
+router.delete('/orders/completed', deleteCompletedOrders);
 router.delete('/orders/:id', deleteOrder);
 router.delete('/orders', deleteAllOrders);
 router.delete('/orders/status/:status', deleteOrdersByStatus);

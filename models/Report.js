@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const reportSchema = new mongoose.Schema(
   {
+    reportNumber: {
+      type: Number,
+      required: true,
+      unique: true,
+    },
     type: {
       type: String,
       enum: ["daily", "weekly", "monthly"],
@@ -9,7 +14,20 @@ const reportSchema = new mongoose.Schema(
     },
     period: {
       type: String,
-      required: true, // "2024-01-15" yoki "2024-W03" yoki "2024-01"
+      required: true,
+    },
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      required: true,
+    },
+    uniqueId: {
+      type: String,
+      unique: true,
+      required: true,
     },
     data: {
       totalOrders: { type: Number, default: 0 },
@@ -51,6 +69,10 @@ const reportSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ✅ Qo'shimcha indekslar
+reportSchema.index({ type: 1, createdAt: -1 });
+reportSchema.index({ type: 1, period: 1 });
 
 const Report = mongoose.models.Report || mongoose.model("Report", reportSchema);
 export default Report;

@@ -31,7 +31,11 @@ export const createMenu = async (req, res) => {
       price: Number(req.body.price),
       retsept: req.body.retsept || "",
       category: req.body.category || "Boshqa",
-      image: req.file ? `/uploads/${req.file.filename}` : "",
+      // ✅ Fayl yuklangan bo'lsa — local fayl yo'li; aks holda req.body.image
+      // (masalan, admin panelda to'g'ridan-to'g'ri kiritilgan URL) ishlatiladi.
+      // Avval bu yerda faqat req.file tekshirilardi, shu sabab URL orqali
+      // qo'shilgan rasm hech qachon saqlanmas edi.
+      image: req.file ? `/uploads/${req.file.filename}` : (req.body.image || ""),
     };
 
     const menu = await Menu.create(menuData);
@@ -59,6 +63,9 @@ export const updateMenu = async (req, res) => {
 
     if (req.file) {
       data.image = `/uploads/${req.file.filename}`;
+    } else if (req.body.image) {
+      // ✅ Yangi fayl yuklanmagan, lekin URL kiritilgan bo'lsa — shuni saqlaymiz
+      data.image = req.body.image;
     }
 
     const updatedMenu = await Menu.findByIdAndUpdate(
