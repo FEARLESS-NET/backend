@@ -58,20 +58,23 @@ const startServer = async () => {
 
     // CORS
     app.use(
-      cors({
-        origin: [
-          "https://qrcode-wc4q.vercel.app",
-          "https://qrcode-4-hqdm.onrender.com",
-          "http://localhost:5173",
-          "http://localhost:3005",
-          "http://127.0.0.1:5173",
-          "http://127.0.0.1:3005",
-          
-        ],
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-        credentials: true,
-      })
-    );
+  cors({
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "https://qrcode-1-qo6i.onrender.com", // Frontend manzilingiz
+        "http://localhost:5173",
+        "http://localhost:3005"
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS ruxsat berilmadi'));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
+  })
+);
 
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
