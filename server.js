@@ -61,12 +61,12 @@ const startServer = async () => {
       cors({
         origin: [
           "https://qrcode-wc4q.vercel.app",
-          "https://render.com/docs/node-version",
+          "https://qrcode-1-qo6i.onrender.com",
           "http://localhost:5173",
           "http://localhost:3005",
           "http://127.0.0.1:5173",
           "http://127.0.0.1:3005",
-          "*"
+          
         ],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
         credentials: true,
