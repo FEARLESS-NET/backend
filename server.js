@@ -61,7 +61,7 @@ const startServer = async () => {
       cors({
         origin: [
           "https://qrcode-wc4q.vercel.app",
-          "https://qrcode-1-qo6i.onrender.com",
+          "https://qrcode-4-hqdm.onrender.com",
           "http://localhost:5173",
           "http://localhost:3005",
           "http://127.0.0.1:5173",
