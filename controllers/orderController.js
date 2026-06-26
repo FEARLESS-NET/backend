@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import { sendOrderNotification } from "../services/telegramService.js";
 import { generateDailyReportOnOrder } from "./reportController.js";
+import { notifyCustomerOrderStatus } from "../services/telegramService.js";
 
 // ─── BARCHA ZAKAZLAR ────────────────────────────────────────────────────────
 export const getOrders = async (req, res) => {
@@ -36,9 +37,7 @@ export const getOneOrder = async (req, res) => {
   }
 };
 
-// ─── ✅ YANGI ZAKAZ YARATISH ──────────────────────────────────────────────
-// ✅ TELEGRAMGA ZAKAZ HAQIDA XABAR KELADI
-// ❌ KUNLIK HISOBOT KELMAYDI
+
 export const createOrder = async (req, res) => {
   try {
     console.log("📝 Yangi zakaz yaratilmoqda...");
@@ -109,13 +108,11 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
+    // ✅ Mijozga xabar yuborish
+    await notifyCustomerOrderStatus(order, status);
+
     if (status === "ready") {
-      try {
-        await generateDailyReportOnOrder();
-        console.log("✅ Zakaz ready bo'ldi, kunlik hisobot yangilandi");
-      } catch (reportErr) {
-        console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
-      }
+      await generateDailyReportOnOrder();
     }
 
     res.json({ success: true, order });
@@ -127,15 +124,9 @@ export const updateOrderStatus = async (req, res) => {
 // ─── YETKAZIB BERISH HOLATINI YANGILASH ──────────────────────────────────
 export const updateDeliveryStatus = async (req, res) => {
   try {
-    const { deliveryStatus, deliveryTime, courierName, courierPhone } = req.body;
+    const { deliveryStatus, courierName, courierPhone } = req.body;
     
-    const updateData = { 
-      deliveryStatus, 
-      deliveryTime, 
-      courierName, 
-      courierPhone,
-    };
-    
+    const updateData = { deliveryStatus, courierName, courierPhone };
     if (deliveryStatus === "delivered") {
       updateData.status = "ready";
     }
@@ -150,13 +141,11 @@ export const updateDeliveryStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
+    // ✅ Mijozga xabar yuborish
+    await notifyCustomerOrderStatus(order, deliveryStatus);
+
     if (deliveryStatus === "delivered") {
-      try {
-        await generateDailyReportOnOrder();
-        console.log("✅ Zakaz delivered bo'ldi, kunlik hisobot yangilandi");
-      } catch (reportErr) {
-        console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
-      }
+      await generateDailyReportOnOrder();
     }
 
     res.json({ success: true, order });
