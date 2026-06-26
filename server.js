@@ -67,7 +67,7 @@ app.get('/health', (req, res) => {
 
 // ─── ✅ CORS SOZLAMALARI (TUZATILGAN) ────────────────────────────
 const allowedOrigins = [
-  "https://qrcode-1-qo6i.onrender.com",  // Frontend
+  "https://qrcode-4-hqdm.onrender.com",  // Frontend
   "https://backend-4-9otm.onrender.com", // Backend (TUZATILDI)
   "http://localhost:5173",
   "http://localhost:3000",
