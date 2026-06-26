@@ -1,14 +1,41 @@
-import Menu from "../models/menu.js";
+import Menu from "../models/Menu.js";
 
 // GET ALL — barcha menularni olish
 export const getMenu = async (req, res) => {
   try {
-    const menus = await Menu.find().sort({ createdAt: -1 });
-    res.json({ success: true, menus });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const category = req.query.category;
+
+    let query = {};
+    if (category) query.category = category;
+
+    const [menus, total] = await Promise.all([
+      Menu.find(query)
+        .select('name price image retsept category')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean(), // ✅ Tezroq
+      Menu.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      menus,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // GET ONE — bitta menuni id bo'yicha olish
 export const getOne = async (req, res) => {

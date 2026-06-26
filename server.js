@@ -1,14 +1,13 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import compression from "compression";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ .env faylni yuklash
 dotenv.config({ path: path.join(__dirname, ".env") });
 
-// ✅ DNS sozlamalari
 import dns from 'dns';
 dns.setServers(['1.1.1.1', '8.8.8.8', '9.9.9.9']);
 console.log("🌐 DNS serverlar:", dns.getServers());
@@ -36,6 +35,12 @@ if (!fs.existsSync("uploads")) {
 const app = express();
 const PORT = process.env.PORT || 3005;
 
+// ─── ✅ COMPRESSION (siqish) ──────────────────────────────────
+app.use(compression({
+  level: 6,
+  threshold: 1024
+}));
+
 // ─── ✅ ROOT ROUTE ──────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({ 
@@ -45,7 +50,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// ─── ✅ HEALTH CHECK ENDPOINT (UptimeRobot uchun) ──────────────────
+// ─── ✅ HEALTH CHECK ──────────────────────────────────
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -60,13 +65,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ─── ✅ CORS SOZLAMALARI ────────────────────────────────────────────
+// ─── ✅ CORS SOZLAMALARI (TUZATILGAN) ────────────────────────────
 const allowedOrigins = [
   "https://qrcode-1-qo6i.onrender.com",  // Frontend
-  "https://backend-2-qyr4.onrender.com", // Backend
-  "http://localhost:5173",                // Local Vite
-  "http://localhost:3000",                // Local React
-  "http://localhost:3005"                 // Local backend
+  "https://backend-4-9otm.onrender.com", // Backend (TUZATILDI)
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:3005"
 ];
 
 app.use(cors({
@@ -89,7 +94,6 @@ app.use(cors({
   maxAge: 86400
 }));
 
-// ✅ Preflight so'rovlari
 app.options('*', cors());
 
 // ─── ✅ MIDDLEWARE ──────────────────────────────────────────────────
@@ -99,7 +103,14 @@ app.use("/uploads", express.static("uploads"));
 
 // ✅ Request logger
 app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin || 'No origin'}`);
+  console.log(`📨 ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// ✅ Timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(30000);
+  res.setTimeout(30000);
   next();
 });
 
@@ -123,13 +134,12 @@ app.use((req, res) => {
 // ─── ✅ GLOBAL ERROR HANDLER ────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error("❌ Server xatosi:", err.message);
-  console.error("❌ Stack:", err.stack);
   
   if (err.message.includes('CORS')) {
     return res.status(403).json({ 
       success: false, 
       message: err.message,
-      details: "CORS ruxsat berilmadi. Frontend URL'ni tekshiring."
+      details: "CORS ruxsat berilmadi."
     });
   }
   
@@ -148,17 +158,17 @@ const startServer = async () => {
     startTelegramPolling();
     console.log("✅ Telegram bot ishga tushdi");
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`✅ Server ishga tushdi: http://localhost:${PORT}`);
       console.log(`✅ Production URL: https://backend-4-9otm.onrender.com`);
       console.log(`✅ Health Check: https://backend-4-9otm.onrender.com/health`);
-      console.log(`📊 Hisobotlar zakaz yaratilganda avtomatik yangilanadi`);
-      console.log(`🔄 Reset faqat qo'lda, admin paneldagi tugmalar orqali`);
     });
+
+    server.timeout = 30000;
+    server.keepAliveTimeout = 30000;
 
   } catch (error) {
     console.error("❌ Serverni ishga tushirishda xatolik:", error.message);
-    console.log("⏳ 10 soniyadan keyin qayta urinish...");
     setTimeout(startServer, 10000);
   }
 };
