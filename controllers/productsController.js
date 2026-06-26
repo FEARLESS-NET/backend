@@ -4,20 +4,22 @@ import Menu from "../models/menu.js";
 export const getMenu = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 50; // ✅ Faqat 20 ta
     const skip = (page - 1) * limit;
     const category = req.query.category;
 
     let query = {};
     if (category) query.category = category;
 
+    // ✅ Parallel so'rovlar (tezroq)
     const [menus, total] = await Promise.all([
       Menu.find(query)
         .select('name price image retsept category')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip)
-        .lean(), // ✅ Tezroq
+        .lean()
+        .maxTimeMS(15000),
       Menu.countDocuments(query)
     ]);
 
@@ -32,10 +34,13 @@ export const getMenu = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Menu xatosi:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
-
 
 // GET ONE — bitta menuni id bo'yicha olish
 export const getOne = async (req, res) => {
