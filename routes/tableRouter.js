@@ -11,7 +11,7 @@ import {
 const router = express.Router();
  
 router.get("/tables", getTables);
-router.get("/tables/available", getAvailableTables); // ✅ :id dan OLDIN turishi shart!
+router.get("/tables/available", getAvailableTables);
 router.get("/tables/:id", getOneTable);
 router.post("/tables", createTable);
 router.put("/tables/:id", updateTable);

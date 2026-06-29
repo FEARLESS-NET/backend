@@ -11,7 +11,6 @@ const menuSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ INDEX'LAR (tezlashtiradi)
 menuSchema.index({ category: 1, price: -1 });
 menuSchema.index({ name: 'text' });
 menuSchema.index({ createdAt: -1 });

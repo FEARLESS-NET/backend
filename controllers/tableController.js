@@ -1,7 +1,6 @@
 import Table from "../models/Table.js";
 import Reservation from "../models/Reservation.js";
 
-// Barcha stollarni olish (bo'sh/band statistika bilan)
 export const getTables = async (req, res) => {
   try {
     const tables = await Table.find().sort({ number: 1 });
@@ -20,7 +19,6 @@ export const getTables = async (req, res) => {
   }
 };
 
-// Bitta stol
 export const getOneTable = async (req, res) => {
   try {
     const table = await Table.findById(req.params.id);
@@ -32,7 +30,6 @@ export const getOneTable = async (req, res) => {
   }
 };
 
-// Yangi stol qo'shish
 export const createTable = async (req, res) => {
   try {
     const table = await Table.create(req.body);
@@ -42,7 +39,6 @@ export const createTable = async (req, res) => {
   }
 };
 
-// Stolni yangilash
 export const updateTable = async (req, res) => {
   try {
     const table = await Table.findByIdAndUpdate(req.params.id, req.body, {
@@ -57,7 +53,6 @@ export const updateTable = async (req, res) => {
   }
 };
 
-// Stolni o'chirish
 export const deleteTable = async (req, res) => {
   try {
     const table = await Table.findByIdAndDelete(req.params.id);
@@ -69,7 +64,6 @@ export const deleteTable = async (req, res) => {
   }
 };
 
-// Ma'lum sana va vaqtda bo'sh stollarni olish
 export const getAvailableTables = async (req, res) => {
   try {
     const { date, time } = req.query;
@@ -80,7 +74,6 @@ export const getAvailableTables = async (req, res) => {
         .json({ success: false, message: "Sana va vaqt kiritilishi shart" });
     }
 
-    // O'sha sana va vaqtda bron qilingan stollar
     const bookedReservations = await Reservation.find({
       date,
       time,

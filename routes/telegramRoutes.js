@@ -7,4 +7,4 @@ router.post("/telegram/link", createLinkToken);
 router.get("/telegram/link/:token", getLinkStatus);
 router.get("/telegram/bot-info", getBotInfo);
 
-export default router; 
+export default router;

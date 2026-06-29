@@ -1,17 +1,15 @@
 import Menu from "../models/menu.js";
 
-// GET ALL — barcha menularni olish
 export const getMenu = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50; // ✅ Faqat 20 ta
+    const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
     const category = req.query.category;
 
     let query = {};
     if (category) query.category = category;
 
-    // ✅ Parallel so'rovlar (tezroq)
     const [menus, total] = await Promise.all([
       Menu.find(query)
         .select('name price image retsept category')
@@ -42,7 +40,6 @@ export const getMenu = async (req, res) => {
   }
 };
 
-// GET ONE — bitta menuni id bo'yicha olish
 export const getOne = async (req, res) => {
   try {
     const menu = await Menu.findById(req.params.id);
@@ -55,7 +52,6 @@ export const getOne = async (req, res) => {
   }
 };
 
-// CREATE — yangi menu yaratish
 export const createMenu = async (req, res) => {
   try {
     const menuData = {
@@ -63,10 +59,6 @@ export const createMenu = async (req, res) => {
       price: Number(req.body.price),
       retsept: req.body.retsept || "",
       category: req.body.category || "Boshqa",
-      // ✅ Fayl yuklangan bo'lsa — local fayl yo'li; aks holda req.body.image
-      // (masalan, admin panelda to'g'ridan-to'g'ri kiritilgan URL) ishlatiladi.
-      // Avval bu yerda faqat req.file tekshirilardi, shu sabab URL orqali
-      // qo'shilgan rasm hech qachon saqlanmas edi.
       image: req.file ? `/uploads/${req.file.filename}` : (req.body.image || ""),
     };
 
@@ -83,7 +75,6 @@ export const createMenu = async (req, res) => {
   }
 };
 
-// UPDATE — menuni yangilash
 export const updateMenu = async (req, res) => {
   try {
     const data = {
@@ -96,7 +87,6 @@ export const updateMenu = async (req, res) => {
     if (req.file) {
       data.image = `/uploads/${req.file.filename}`;
     } else if (req.body.image) {
-      // ✅ Yangi fayl yuklanmagan, lekin URL kiritilgan bo'lsa — shuni saqlaymiz
       data.image = req.body.image;
     }
 
@@ -130,7 +120,6 @@ export const updateMenu = async (req, res) => {
   }
 };
 
-// DELETE — menuni o'chirish
 export const deleteMenu = async (req, res) => {
   try {
     const deletedMenu = await Menu.findByIdAndDelete(req.params.id);

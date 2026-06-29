@@ -10,7 +10,6 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 import dns from 'dns';
 dns.setServers(['1.1.1.1', '8.8.8.8', '9.9.9.9']);
-console.log("🌐 DNS serverlar:", dns.getServers());
 
 import express from "express";
 import cors from "cors";
@@ -26,22 +25,16 @@ import orderRouter from "./routes/orderRouter.js";
 import paymentRouter from "./routes/paymentRouter.js";
 import reportRouter from "./routes/reportRouter.js";
 
-// Uploads papkasini yaratish
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
-  console.log("📁 uploads/ papkasi yaratildi");
 }
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 
-// ─── ✅ COMPRESSION (siqish) ──────────────────────────────────
-app.use(compression({
-  level: 6,
-  threshold: 1024
-}));
+app.use(compression({ level: 6, threshold: 1024 }));
 
-// ─── ✅ ROOT ROUTE ──────────────────────────────────────────────────
+// ─── ROOT ──────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({ 
     message: "Restaurant API is running ✅", 
@@ -50,7 +43,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// ─── ✅ HEALTH CHECK ──────────────────────────────────
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -61,14 +53,15 @@ app.get('/health', (req, res) => {
       total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
     },
     database: 'MongoDB connected ✅',
-    service: 'Restaurant API'
+    service: 'Restaurant API',
+    frontend: process.env.FRONTEND_URL || 'https://qrcode-4-hqdm.onrender.com'
   });
 });
 
-// ─── ✅ CORS SOZLAMALARI (TUZATILGAN) ────────────────────────────
+// ─── CORS ──────────────────────────────────────────────────
 const allowedOrigins = [
-  "https://qrcode-4-hqdm.onrender.com",  // Frontend
-  "https://backend-4-9otm.onrender.com", // Backend (TUZATILDI)
+  "https://qrcode-4-hqdm.onrender.com",
+  "https://backend-4-9otm.onrender.com",
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:3005"
@@ -76,10 +69,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
-    
+    if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -96,25 +86,23 @@ app.use(cors({
 
 app.options('*', cors());
 
-// ─── ✅ MIDDLEWARE ──────────────────────────────────────────────────
+// ─── MIDDLEWARE ──────────────────────────────────────────────────
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use("/uploads", express.static("uploads"));
 
-// ✅ Request logger
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// ✅ Timeout middleware
 app.use((req, res, next) => {
   req.setTimeout(30000);
   res.setTimeout(30000);
   next();
 });
 
-// ─── ✅ ROUTES ──────────────────────────────────────────────────────
+// ─── ROUTES ──────────────────────────────────────────────────────
 app.use("/api/v1", productRouter);
 app.use("/api/v1", tableRouter);
 app.use("/api/v1", reservationRouter);
@@ -123,7 +111,7 @@ app.use("/api/v1", paymentRouter);
 app.use("/api/v1", reportRouter);
 app.use("/api/v1", telegramRoutes);
 
-// ─── ✅ 404 HANDLER ──────────────────────────────────────────────────
+// ─── 404 ────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ 
     success: false, 
@@ -131,10 +119,9 @@ app.use((req, res) => {
   });
 });
 
-// ─── ✅ GLOBAL ERROR HANDLER ────────────────────────────────────────
+// ─── ERROR HANDLER ──────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error("❌ Server xatosi:", err.message);
-  
   if (err.message.includes('CORS')) {
     return res.status(403).json({ 
       success: false, 
@@ -142,31 +129,27 @@ app.use((err, req, res, next) => {
       details: "CORS ruxsat berilmadi."
     });
   }
-  
   res.status(500).json({ 
     success: false, 
     message: err.message || "Server xatosi yuz berdi" 
   });
 });
 
-// ─── ✅ SERVER START ────────────────────────────────────────────────
+// ─── START ────────────────────────────────────────────────────────
 const startServer = async () => {
   try {
     await connectDB();
     console.log("✅ MongoDB ulandi");
-    
     startTelegramPolling();
     console.log("✅ Telegram bot ishga tushdi");
 
     const server = app.listen(PORT, () => {
       console.log(`✅ Server ishga tushdi: http://localhost:${PORT}`);
       console.log(`✅ Production URL: https://backend-4-9otm.onrender.com`);
-      console.log(`✅ Health Check: https://backend-4-9otm.onrender.com/health`);
     });
 
     server.timeout = 30000;
     server.keepAliveTimeout = 30000;
-
   } catch (error) {
     console.error("❌ Serverni ishga tushirishda xatolik:", error.message);
     setTimeout(startServer, 10000);

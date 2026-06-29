@@ -18,21 +18,17 @@ import {
 
 const router = express.Router();
 
-// ─── GET ──────────────────────────────────────────────────────────────────
 router.get('/orders/search', searchOrders);
 router.get('/orders/phone/:phone', getOrderByPhone);
 router.get('/orders', getOrders);
 router.get('/orders/:id', getOneOrder);
 
-// ─── POST ─────────────────────────────────────────────────────────────────
 router.post('/orders', createOrder);
 
-// ─── PATCH (UPDATE) ──────────────────────────────────────────────────────
 router.patch('/orders/:id/status', updateOrderStatus);
 router.patch('/orders/:id/payment', updatePaymentStatus);
 router.patch('/orders/:id/delivery', updateDeliveryStatus);
 
-// ─── DELETE ──────────────────────────────────────────────────────────────
 router.delete('/orders/force', deleteAllOrdersForce);
 router.delete('/orders/completed', deleteCompletedOrders);
 router.delete('/orders/:id', deleteOrder);

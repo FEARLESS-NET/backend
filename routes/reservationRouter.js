@@ -4,7 +4,7 @@ import {
   getOneReservation,
   createReservation,
   updateReservation,
-  cancelReservation,        // ✅ BU EXPORT QILINGAN
+  cancelReservation,
   getNearbyReservations,
   deleteCompletedReservations,
   deleteAllReservationsForce,
@@ -17,7 +17,7 @@ router.get("/reservations/nearby", getNearbyReservations);
 router.get("/reservations/:id", getOneReservation);
 router.post("/reservations", createReservation);
 router.put("/reservations/:id", updateReservation);
-router.patch("/reservations/:id/cancel", cancelReservation);  // ✅ BU ENDI ISHLAYDI
+router.patch("/reservations/:id/cancel", cancelReservation);
 router.delete("/reservations/force", deleteAllReservationsForce);
 router.delete("/reservations/completed", deleteCompletedReservations);
 

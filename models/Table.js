@@ -19,12 +19,10 @@ const tableSchema = new mongoose.Schema(
     location: {
       type: String,
       trim: true,
-      // masalan: "Ichki zal", "Tashqi terassa"
     },
   },
   { timestamps: true }
 );
 
 const Table = mongoose.models.Table || mongoose.model("Table", tableSchema);
-
 export default Table;

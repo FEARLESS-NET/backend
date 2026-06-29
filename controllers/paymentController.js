@@ -1,6 +1,5 @@
 import Order from "../models/Order.js";
 
-// ─── Click to'lov tizimi ───────────────────────────────────────────────────
 export const createClickPayment = async (req, res) => {
   try {
     const { orderId, amount } = req.body;
@@ -26,7 +25,6 @@ export const createClickPayment = async (req, res) => {
   }
 };
 
-// ─── Payme to'lov tizimi ───────────────────────────────────────────────────
 export const createPaymePayment = async (req, res) => {
   try {
     const { orderId, amount } = req.body;
@@ -53,7 +51,6 @@ export const createPaymePayment = async (req, res) => {
   }
 };
 
-// ─── UzumBank to'lov tizimi ───────────────────────────────────────────────
 export const createUzumbankPayment = async (req, res) => {
   try {
     const { orderId, amount } = req.body;
@@ -78,7 +75,6 @@ export const createUzumbankPayment = async (req, res) => {
   }
 };
 
-// ─── To'lov Webhook (barcha tizimlar uchun) ───────────────────────────────
 export const paymentWebhook = async (req, res) => {
   try {
     const { orderId, status, transactionId } = req.body;

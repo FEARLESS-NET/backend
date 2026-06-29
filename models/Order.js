@@ -105,7 +105,6 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    // ✅ Yangi: Telegram ID (mijozga xabar yuborish uchun)
     telegramId: {
       type: String,
       default: null,

@@ -3,7 +3,6 @@ import Reservation from "../models/Reservation.js";
 import Report from "../models/Report.js";
 import { sendResetNotification } from "../services/telegramService.js";
 
-// ─── KUNLIK SANANI OLISH ──────────────────────────────────────────────────
 const getDailyDateRange = () => {
   const now = new Date();
   const startDate = new Date(now);
@@ -13,19 +12,14 @@ const getDailyDateRange = () => {
   return { startDate, endDate };
 };
 
-// ─── HISOBOT NOMERINI OLISH ────────────────────────────────────────────────
 const getNextReportNumber = async () => {
   const lastReport = await Report.findOne().sort({ reportNumber: -1 });
   return lastReport ? lastReport.reportNumber + 1 : 1;
 };
 
-// ─── ✅ KUNLIK HISOBOT MA'LUMOTLARINI HISOBLASH ──────────────────────────
 const generateDailyReport = async () => {
   try {
     const { startDate, endDate } = getDailyDateRange();
-
-    console.log(`📊 Kunlik hisobot hisoblanmoqda...`);
-    console.log(`   📅 Davr: ${startDate.toISOString()} - ${endDate.toISOString()}`);
 
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
@@ -34,9 +28,6 @@ const generateDailyReport = async () => {
     const reservations = await Reservation.find({
       createdAt: { $gte: startDate, $lte: endDate },
     });
-
-    console.log(`   📦 Zakazlar: ${orders.length} ta`);
-    console.log(`   📋 Bronlar: ${reservations.length} ta`);
 
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
@@ -111,8 +102,6 @@ const generateDailyReport = async () => {
   }
 };
 
-// ─── ✅ KUNLIK HISOBOTNI YANGILASH ────────────────────────────────────────
-// ❌ TELEGRAMGA XABAR YUBORILMAYDI (faqat bazaga yozadi)
 const upsertDailyReport = async () => {
   const reportData = await generateDailyReport();
 
@@ -137,7 +126,6 @@ const upsertDailyReport = async () => {
   return report;
 };
 
-// ─── ✅ KUNLIK HISOBOTNI 0 DAN YARATISH (RESET UCHUN) ──────────────────────
 const createZeroDailyReport = async () => {
   const { startDate, endDate } = getDailyDateRange();
   const reportNumber = await getNextReportNumber();
@@ -174,38 +162,30 @@ const createZeroDailyReport = async () => {
   });
 };
 
-// ─── ✅ ZAKAZ/BRON YARATILGANDA — KUNLIK HISOBOTNI YANGILAYDI ────────────
-// ❌ TELEGRAMGA XABAR YUBORILMAYDI (faqat bazaga yozadi)
 export const generateDailyReportOnOrder = async () => {
   try {
     console.log("📊 ===== KUNLIK HISOBOT YANGILANMOQDA =====");
     await upsertDailyReport();
-    console.log("✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)");
+    console.log("✅ Kunlik hisobot yangilandi");
   } catch (error) {
     console.error("❌ Hisobot yaratishda xatolik:", error);
     throw error;
   }
 };
 
-// ─── ✅ KUNLIK HISOBOTNI 0 GA TIKLAYDI ────────────────────────────────────
-// ✅ TELEGRAMGA HISOBOT XABARI KELADI (RESET BOSILGANDA)
 export const resetDailyReport = async (req, res) => {
   try {
     console.log("🔄 ===== KUNLIK HISOBOT 0 GA TIKLANMOQDA =====");
 
-    // ✅ RESET QILISH OLDIDAGI MA'LUMOTLARNI OLAMIZ
     const beforeReset = await generateDailyReport();
     console.log(`📊 Reset oldidagi ma'lumotlar: ${beforeReset.data.totalOrders} zakaz, ${beforeReset.data.totalRevenue} so'm`);
 
-    // 1. Eski hisobotni o'chirish
     const deleted = await Report.deleteMany({ type: "daily" });
     console.log(`🗑 ${deleted.deletedCount} ta eski kunlik hisobot o'chirildi`);
 
-    // 2. 0 hisobot yaratish
     const zeroReport = await createZeroDailyReport();
     console.log(`✅ Yangi 0 kunlik hisobot yaratildi (№${zeroReport.reportNumber})`);
 
-    // 3. ✅ RESET HAQIDA XABAR YUBORISH (kunlik daromad va zakazlar bilan)
     try {
       await sendResetNotification(beforeReset);
       console.log(`✅ Reset haqida Telegramga xabar yuborildi`);
@@ -230,7 +210,6 @@ export const resetDailyReport = async (req, res) => {
   }
 };
 
-// ─── YAKUNLANGAN ZAKAZLARNI O'CHIRISH ──────────────────────────────────
 export const deleteCompletedOrdersAndUpdateDaily = async (req, res) => {
   try {
     console.log("🔄 ===== YAKUNLANGAN ZAKAZLAR O'CHIRILMOQDA =====");
@@ -244,7 +223,7 @@ export const deleteCompletedOrdersAndUpdateDaily = async (req, res) => {
     console.log(`🗑 ${result.deletedCount} ta yakunlangan zakaz o'chirildi`);
 
     await upsertDailyReport();
-    console.log(`✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)`);
+    console.log(`✅ Kunlik hisobot yangilandi`);
 
     res.json({
       success: true,
@@ -261,7 +240,6 @@ export const deleteCompletedOrdersAndUpdateDaily = async (req, res) => {
   }
 };
 
-// ─── YAKUNLANGAN BRONLARNI O'CHIRISH ──────────────────────────────────
 export const deleteCompletedReservationsAndUpdateDaily = async (req, res) => {
   try {
     console.log("🔄 ===== YAKUNLANGAN BRONLAR O'CHIRILMOQDA =====");
@@ -272,7 +250,7 @@ export const deleteCompletedReservationsAndUpdateDaily = async (req, res) => {
     console.log(`🗑 ${result.deletedCount} ta yakunlangan bron o'chirildi`);
 
     await upsertDailyReport();
-    console.log(`✅ Kunlik hisobot yangilandi (Telegramga xabar yuborilmadi)`);
+    console.log(`✅ Kunlik hisobot yangilandi`);
 
     res.json({
       success: true,
@@ -289,7 +267,6 @@ export const deleteCompletedReservationsAndUpdateDaily = async (req, res) => {
   }
 };
 
-// ─── BARCHA HISOBOTLARNI OLISH ────────────────────────────────────────────
 export const getReports = async (req, res) => {
   try {
     const { limit = 100 } = req.query;
@@ -309,7 +286,6 @@ export const getReports = async (req, res) => {
   }
 };
 
-// ─── BIR HISOBOTNI OLISH ──────────────────────────────────────────────────
 export const getOneReport = async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -322,7 +298,6 @@ export const getOneReport = async (req, res) => {
   }
 };
 
-// ─── HISOBOTNI O'CHIRISH ──────────────────────────────────────────────────
 export const deleteReport = async (req, res) => {
   try {
     const report = await Report.findByIdAndDelete(req.params.id);
@@ -338,7 +313,6 @@ export const deleteReport = async (req, res) => {
   }
 };
 
-// ─── BARCHA HISOBOTLARNI O'CHIRISH ────────────────────────────────────────
 export const deleteAllReports = async (req, res) => {
   try {
     const result = await Report.deleteMany({ type: "daily" });

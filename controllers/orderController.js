@@ -3,7 +3,6 @@ import { sendOrderNotification } from "../services/telegramService.js";
 import { generateDailyReportOnOrder } from "./reportController.js";
 import { notifyCustomerOrderStatus } from "../services/telegramService.js";
 
-// ─── BARCHA ZAKAZLAR ────────────────────────────────────────────────────────
 export const getOrders = async (req, res) => {
   try {
     const { status, deliveryStatus } = req.query;
@@ -21,7 +20,6 @@ export const getOrders = async (req, res) => {
   }
 };
 
-// ─── BIR ZAKAZ ─────────────────────────────────────────────────────────────
 export const getOneOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate(
@@ -37,7 +35,6 @@ export const getOneOrder = async (req, res) => {
   }
 };
 
-
 export const createOrder = async (req, res) => {
   try {
     console.log("📝 Yangi zakaz yaratilmoqda...");
@@ -45,7 +42,6 @@ export const createOrder = async (req, res) => {
     const order = await Order.create(req.body);
     console.log(`✅ Zakaz yaratildi: ${order._id}`);
 
-    // ✅ Telegram xabar (zakaz haqida)
     try {
       await sendOrderNotification(order);
       console.log("✅ Zakaz haqida Telegram xabar yuborildi");
@@ -53,11 +49,10 @@ export const createOrder = async (req, res) => {
       console.error("❌ Telegram xatosi:", telegramErr.message);
     }
 
-    // ✅ Kunlik hisobot yangilanadi (LEKIN TELEGRAMGA XABAR YUBORILMAYDI)
     try {
       console.log("📊 Kunlik hisobot yangilanmoqda...");
       await generateDailyReportOnOrder();
-      console.log("✅ Kunlik hisobot muvaffaqiyatli yangilandi (Telegramga xabar yuborilmadi)");
+      console.log("✅ Kunlik hisobot muvaffaqiyatli yangilandi");
     } catch (reportErr) {
       console.error("❌ Hisobot yaratishda xatolik:", reportErr.message);
     }
@@ -77,7 +72,6 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// ─── TO'LOV HOLATINI YANGILASH ────────────────────────────────────────────
 export const updatePaymentStatus = async (req, res) => {
   try {
     const { paymentStatus, paymentId } = req.body;
@@ -95,7 +89,6 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// ─── ZAKAZ STATUSINI YANGILASH ────────────────────────────────────────────
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -108,7 +101,6 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
-    // ✅ Mijozga xabar yuborish
     await notifyCustomerOrderStatus(order, status);
 
     if (status === "ready") {
@@ -121,7 +113,6 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
-// ─── YETKAZIB BERISH HOLATINI YANGILASH ──────────────────────────────────
 export const updateDeliveryStatus = async (req, res) => {
   try {
     const { deliveryStatus, courierName, courierPhone } = req.body;
@@ -141,7 +132,6 @@ export const updateDeliveryStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
-    // ✅ Mijozga xabar yuborish
     await notifyCustomerOrderStatus(order, deliveryStatus);
 
     if (deliveryStatus === "delivered") {
@@ -154,7 +144,6 @@ export const updateDeliveryStatus = async (req, res) => {
   }
 };
 
-// ─── ZAKAZNI TELEFON RAQAM BO'YICHA QIDIRISH ──────────────────────────────
 export const getOrderByPhone = async (req, res) => {
   try {
     const { phone } = req.params;
@@ -172,7 +161,6 @@ export const getOrderByPhone = async (req, res) => {
   }
 };
 
-// ─── ZAKAZNI TELEFON RAQAM VA ISM BO'YICHA QIDIRISH ───────────────────────
 export const searchOrders = async (req, res) => {
   try {
     const { phone, name } = req.query;
@@ -201,7 +189,6 @@ export const searchOrders = async (req, res) => {
   }
 };
 
-// ─── ZAKAZNI O'CHIRISH ─────────────────────────────────────────────────────
 export const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
@@ -214,7 +201,6 @@ export const deleteOrder = async (req, res) => {
   }
 };
 
-// ─── BARCHA ZAKAZLARNI O'CHIRISH ──────────────────────────────────────────
 export const deleteAllOrders = async (req, res) => {
   try {
     const result = await Order.deleteMany({});
@@ -228,7 +214,6 @@ export const deleteAllOrders = async (req, res) => {
   }
 };
 
-// ─── STATUS BO'YICHA ZAKAZLARNI O'CHIRISH ────────────────────────────────
 export const deleteOrdersByStatus = async (req, res) => {
   try {
     const { status } = req.params;
@@ -243,7 +228,6 @@ export const deleteOrdersByStatus = async (req, res) => {
   }
 };
 
-// ─── ESKI ZAKAZLARNI O'CHIRISH ────────────────────────────────────────────
 export const deleteOldOrders = async (req, res) => {
   try {
     const { days } = req.params;
@@ -264,7 +248,6 @@ export const deleteOldOrders = async (req, res) => {
   }
 };
 
-// ─── YAKUNLANGAN ZAKAZLARNI O'CHIRISH ──────────────────────────────────────
 export const deleteCompletedOrders = async (req, res) => {
   try {
     const result = await Order.deleteMany({
@@ -291,7 +274,6 @@ export const deleteCompletedOrders = async (req, res) => {
   }
 };
 
-// ─── BARCHA ZAKAZLARNI BUTUNLAY O'CHIRISH ──────────────────────────────
 export const deleteAllOrdersForce = async (req, res) => {
   try {
     const count = await Order.countDocuments();

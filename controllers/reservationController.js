@@ -2,7 +2,6 @@ import Reservation from "../models/Reservation.js";
 import Table from "../models/Table.js";
 import { sendReservationNotification } from "../services/telegramService.js";
 
-// ─── BARCHA BRONLAR ────────────────────────────────────────────────────────
 export const getReservations = async (req, res) => {
   try {
     const { date, status, diningArea } = req.query;
@@ -21,7 +20,6 @@ export const getReservations = async (req, res) => {
   }
 };
 
-// ─── BIRTA BRON ────────────────────────────────────────────────────────────
 export const getOneReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findById(req.params.id).populate(
@@ -36,7 +34,6 @@ export const getOneReservation = async (req, res) => {
   }
 };
 
-// ─── YANGI BRON YARATISH ──────────────────────────────────────────────────
 export const createReservation = async (req, res) => {
   try {
     const { tableId, date, time, guestCount, location, diningArea } = req.body;
@@ -90,7 +87,6 @@ export const createReservation = async (req, res) => {
   }
 };
 
-// ─── BRONNI YANGILASH ─────────────────────────────────────────────────────
 export const updateReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findByIdAndUpdate(
@@ -108,7 +104,6 @@ export const updateReservation = async (req, res) => {
   }
 };
 
-// ─── BRONNI BEKOR QILISH ──────────────────────────────────────────────────
 export const cancelReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findByIdAndUpdate(
@@ -124,7 +119,6 @@ export const cancelReservation = async (req, res) => {
   }
 };
 
-// ─── LOKATSIYA BO'YICHA YAQIN BRONLAR ────────────────────────────────────
 export const getNearbyReservations = async (req, res) => {
   try {
     const { lng, lat, maxDistance = 5000 } = req.query;
@@ -155,7 +149,6 @@ export const getNearbyReservations = async (req, res) => {
   }
 };
 
-// ─── ✅ YAKUNLANGAN (CONFIRMED) BRONLARNI O'CHIRISH ─────────────────────
 export const deleteCompletedReservations = async (req, res) => {
   try {
     const result = await Reservation.deleteMany({
@@ -172,7 +165,6 @@ export const deleteCompletedReservations = async (req, res) => {
   }
 };
 
-// ─── ✅ ✅ BARCHA BRONLARNI BUTUNLAY O'CHIRISH ──────────────────────────
 export const deleteAllReservationsForce = async (req, res) => {
   try {
     const count = await Reservation.countDocuments();

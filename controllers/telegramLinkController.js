@@ -2,7 +2,6 @@ import crypto from "crypto";
 import TelegramLink from "../models/TelegramLink.js";
 import { getBotUsername } from "../services/telegramService.js";
 
-// ─── Yangi ulash tokeni yaratish ───────────────────────────────────────────
 export const createLinkToken = async (req, res) => {
   try {
     const token = crypto.randomBytes(16).toString("hex");
@@ -13,7 +12,6 @@ export const createLinkToken = async (req, res) => {
   }
 };
 
-// ─── Token holatini tekshirish ─────────────────────────────────────────────
 export const getLinkStatus = async (req, res) => {
   try {
     const { token } = req.params;
@@ -31,7 +29,6 @@ export const getLinkStatus = async (req, res) => {
   }
 };
 
-// ─── Bot username'ini frontendga berish ────────────────────────────────────
 export const getBotInfo = async (req, res) => {
   try {
     const username = await getBotUsername();

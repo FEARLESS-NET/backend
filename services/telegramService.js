@@ -6,19 +6,10 @@ dotenv.config();
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+const FRONTEND_URL = (process.env.FRONTEND_URL || "https://qrcode-4-hqdm.onrender.com").replace(/\/$/, "");
 
-const isPublicUrl = (url) => {
-  try {
-    const { hostname } = new URL(url);
-    return !["localhost", "127.0.0.1", "0.0.0.0"].includes(hostname);
-  } catch {
-    return false;
-  }
-};
-const FRONTEND_URL_IS_PUBLIC = isPublicUrl(FRONTEND_URL);
+const ADMIN_URL = `${FRONTEND_URL}/admin`;
 
-// ─── Asosiy xabar yuboruvchi ──────────────────────────────────────────────
 const sendMessage = async (text, { chatId = CHAT_ID, replyMarkup } = {}) => {
   if (!BOT_TOKEN || !chatId) {
     console.log("⚠️ Telegram sozlanmagan yoki chat_id yo'q, xabar yuborilmadi");
@@ -47,7 +38,6 @@ const sendMessage = async (text, { chatId = CHAT_ID, replyMarkup } = {}) => {
   }
 };
 
-// ─── Lokatsiyani xarita sifatida yuborish ──────────────────────────────────
 const sendLocation = async (latitude, longitude, chatId = CHAT_ID) => {
   if (!BOT_TOKEN || !chatId) return;
   try {
@@ -65,7 +55,6 @@ const sendLocation = async (latitude, longitude, chatId = CHAT_ID) => {
   }
 };
 
-// ─── ✅ ZAKAZ XABARI ──────────────────────────────────────────────────────
 export const sendOrderNotification = async (order) => {
   const items = order.items
     .map(
@@ -117,17 +106,17 @@ export const sendOrderNotification = async (order) => {
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  const buttonsRow1 = [];
-  if (order.deliveryType === "delivery" && hasValidCoords) {
-    buttonsRow1.push({ text: "🗺 Xaritada ochish", url: `https://www.google.com/maps?q=${lat},${lng}` });
-  }
-  const buttonsRow2 = FRONTEND_URL_IS_PUBLIC
-    ? [{ text: "🛠 Admin panelda ko'rish", url: `${FRONTEND_URL}/admin` }]
-    : [];
-
   const inlineKeyboard = [];
-  if (buttonsRow1.length > 0) inlineKeyboard.push(buttonsRow1);
-  if (buttonsRow2.length > 0) inlineKeyboard.push(buttonsRow2);
+  
+  if (order.deliveryType === "delivery" && hasValidCoords) {
+    inlineKeyboard.push([
+      { text: "🗺 Xaritada ochish", url: `https://www.google.com/maps?q=${lat},${lng}` }
+    ]);
+  }
+  
+  inlineKeyboard.push([
+    { text: "🛠 Admin panelda ko'rish", url: ADMIN_URL }
+  ]);
 
   await sendMessage(text, {
     replyMarkup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
@@ -138,7 +127,6 @@ export const sendOrderNotification = async (order) => {
   }
 };
 
-// ─── ✅ BRON XABARI ──────────────────────────────────────────────────────
 export const sendReservationNotification = async (reservation, tableNumber) => {
   const yuborildi = new Date().toLocaleString("ru-RU", {
     day: "2-digit",
@@ -172,16 +160,13 @@ export const sendReservationNotification = async (reservation, tableNumber) => {
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  const inlineKeyboard = FRONTEND_URL_IS_PUBLIC
-    ? [[{ text: "🛠 Admin panelda ko'rish", url: `${FRONTEND_URL}/admin` }]]
-    : [];
+  const inlineKeyboard = [[{ text: "🛠 Admin panelda ko'rish", url: ADMIN_URL }]];
 
   await sendMessage(text, {
-    replyMarkup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
+    replyMarkup: { inline_keyboard: inlineKeyboard },
   });
 };
 
-// ─── ✅ RESET BILDIRISHI (kunlik daromad va zakazlar bilan) ──────────────
 export const sendResetNotification = async (reportData) => {
   if (!reportData) return false;
   const { period, data = {} } = reportData;
@@ -215,14 +200,11 @@ export const sendResetNotification = async (reportData) => {
     `\n━━━━━━━━━━━━━━━━━━━━\n` +
     `📊 Yangi kun boshlansin! 🚀`;
 
-  const replyMarkup = FRONTEND_URL_IS_PUBLIC
-    ? { inline_keyboard: [[{ text: "📊 Admin panelda ko'rish", url: `${FRONTEND_URL}/admin` }]] }
-    : undefined;
+  const replyMarkup = { inline_keyboard: [[{ text: "📊 Admin panelda ko'rish", url: ADMIN_URL }]] };
 
   return sendMessage(text, { replyMarkup });
 };
 
-// ─── ✅ BOT USERNAME OLISH ──────────────────────────────────────────────
 let cachedBotUsername = null;
 
 export const getBotUsername = async () => {
@@ -241,7 +223,6 @@ export const getBotUsername = async () => {
   return null;
 };
 
-// ─── ✅ Mijozga xabar yuborish ──────────────────────────────────────────
 export const sendCustomerMessage = async (telegramId, text, replyMarkup) => {
   if (!telegramId) {
     console.log("ℹ️ Mijozning telegramId'si yo'q — Telegram orqali xabar yuborilmadi");
@@ -250,7 +231,6 @@ export const sendCustomerMessage = async (telegramId, text, replyMarkup) => {
   return sendMessage(text, { chatId: telegramId, replyMarkup });
 };
 
-// ─── ✅ Mijozga zakaz holati o'zgarganda xabar ──────────────────────────
 export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const orderShort = `#${order._id?.toString().slice(-6) || ""}`;
 
@@ -266,14 +246,11 @@ export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const text = statusTexts[statusKey];
   if (!text) return false;
 
-  const replyMarkup = FRONTEND_URL_IS_PUBLIC
-    ? { inline_keyboard: [[{ text: "🔎 Holatni kuzatish", url: `${FRONTEND_URL}/track` }]] }
-    : undefined;
+  const replyMarkup = { inline_keyboard: [[{ text: "🔎 Holatni kuzatish", url: `${FRONTEND_URL}/track` }]] };
 
   return sendCustomerMessage(order.telegramId, text, replyMarkup);
 };
 
-// ─── ✅ TELEGRAM POLLING ──────────────────────────────────────────────────
 let pollingOffset = 0;
 let pollingStarted = false;
 
@@ -334,7 +311,6 @@ const pollUpdates = async () => {
   }
 };
 
-// ─── ✅ POLLINGNI ISHGA TUSHIRISH ──────────────────────────────────────────
 export const startTelegramPolling = () => {
   if (pollingStarted || !BOT_TOKEN) {
     if (!BOT_TOKEN) console.log("⚠️ TELEGRAM_BOT_TOKEN yo'q — bot tinglanmaydi");
@@ -345,7 +321,6 @@ export const startTelegramPolling = () => {
   pollUpdates();
 };
 
-// ─── ✅ POLLINGNI TO'XTATISH ──────────────────────────────────────────────
 export const stopTelegramPolling = () => {
   pollingStarted = false;
   console.log("🛑 Telegram polling to'xtatildi");

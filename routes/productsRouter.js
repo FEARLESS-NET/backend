@@ -17,7 +17,6 @@ router.post("/menus", upload.single("image"), createMenu);
 router.put("/menus/:id", upload.single("image"), updateMenu);
 router.delete("/menus/:id", deleteMenu);
 
-// ✅ URL orqali rasm yuklash
 router.post("/upload/url", async (req, res) => {
   try {
     const { url } = req.body;

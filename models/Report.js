@@ -70,7 +70,6 @@ const reportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Qo'shimcha indekslar
 reportSchema.index({ type: 1, createdAt: -1 });
 reportSchema.index({ type: 1, period: 1 });
 

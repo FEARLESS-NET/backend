@@ -21,7 +21,6 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// ✅ URL orqali rasm yuklash funksiyasi
 export const uploadFromUrl = async (imageUrl) => {
   try {
     const response = await axios.get(imageUrl, { responseType: 'stream' });
