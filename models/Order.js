@@ -65,6 +65,11 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    // ✅ Stol joylashuvi (location) uchun
+    tableLocation: {
+      type: String,
+      default: null,
+    },
     note: {
       type: String,
       trim: true,

@@ -1,5 +1,8 @@
 import Menu from "../models/menu.js";
+import path from "path";
+import fs from "fs";
 
+// ✅ EXPRESS-FILEUPLOAD BILAN
 export const getMenu = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -17,7 +20,7 @@ export const getMenu = async (req, res) => {
         .limit(limit)
         .skip(skip)
         .lean()
-        .maxTimeMS(15000),
+        .maxTimeMS(60000),
       Menu.countDocuments(query)
     ]);
 
@@ -52,15 +55,44 @@ export const getOne = async (req, res) => {
   }
 };
 
+// ✅ CREATE MENU - EXPRESS-FILEUPLOAD
 export const createMenu = async (req, res) => {
   try {
+    let imagePath = "";
+    
+    if (req.files && req.files.image) {
+      const file = req.files.image;
+      
+      // ✅ .fif, .jfif ni .jpg ga o'zgartirish
+      let ext = path.extname(file.name).toLowerCase();
+      const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
+      
+      if (!allowedExt.includes(ext)) {
+        ext = '.jpg'; // Default .jpg
+      }
+      
+      const filename = Date.now() + ext;
+      const uploadPath = path.join(process.cwd(), 'uploads', filename);
+      
+      await file.mv(uploadPath);
+      imagePath = `/uploads/${filename}`;
+      
+      console.log("📸 Yuklangan fayl nomi:", file.name);
+      console.log("📸 Saqlanayotgan manzil:", imagePath);
+      console.log("📸 Fayl saqlandi:", uploadPath);
+    } else if (req.body.image && req.body.image.trim()) {
+      imagePath = req.body.image.trim();
+    }
+
     const menuData = {
       name: req.body.name,
       price: Number(req.body.price),
       retsept: req.body.retsept || "",
       category: req.body.category || "Boshqa",
-      image: req.file ? `/uploads/${req.file.filename}` : (req.body.image || ""),
+      image: imagePath,
     };
+
+    console.log("📸 Saqlanayotgan ma'lumot:", menuData);
 
     const menu = await Menu.create(menuData);
 
@@ -70,13 +102,32 @@ export const createMenu = async (req, res) => {
       menu,
     });
   } catch (error) {
-    console.error("Create menu error:", error);
+    console.error("❌ Create menu error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+// ✅ UPDATE MENU - EXPRESS-FILEUPLOAD
 export const updateMenu = async (req, res) => {
   try {
+    let imagePath = "";
+    
+    // ✅ express-fileupload bilan rasm yangilash
+    if (req.files && req.files.image) {
+      const file = req.files.image;
+      const filename = Date.now() + path.extname(file.name);
+      const uploadPath = path.join(process.cwd(), 'uploads', filename);
+      
+      await file.mv(uploadPath);
+      imagePath = `/uploads/${filename}`;
+      
+      console.log("📸 Yangi yuklangan fayl:", file.name);
+      console.log("📸 Saqlanayotgan manzil:", imagePath);
+    } else if (req.body.image && req.body.image.trim()) {
+      imagePath = req.body.image.trim();
+      console.log("📸 Body dan kelgan manzil:", imagePath);
+    }
+
     const data = {
       name: req.body.name,
       price: Number(req.body.price),
@@ -84,19 +135,16 @@ export const updateMenu = async (req, res) => {
       category: req.body.category || "Boshqa",
     };
 
-    if (req.file) {
-      data.image = `/uploads/${req.file.filename}`;
-    } else if (req.body.image) {
-      data.image = req.body.image;
+    if (imagePath) {
+      data.image = imagePath;
     }
+
+    console.log("📸 Yangilanayotgan ma'lumot:", data);
 
     const updatedMenu = await Menu.findByIdAndUpdate(
       req.params.id,
       data,
-      {
-        new: true,
-        runValidators: true,
-      }
+      { new: true, runValidators: true }
     );
 
     if (!updatedMenu) {
@@ -113,6 +161,7 @@ export const updateMenu = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("❌ Update menu error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -134,6 +183,7 @@ export const deleteMenu = async (req, res) => {
       id: req.params.id,
     });
   } catch (error) {
+    console.error("❌ Delete menu error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

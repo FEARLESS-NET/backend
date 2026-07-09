@@ -1,6 +1,6 @@
 import Reservation from "../models/Reservation.js";
 import Table from "../models/Table.js";
-import { sendReservationNotification } from "../services/telegramService.js";
+import { sendReservationNotification, sendCustomerReservationConfirmation } from "../services/telegramService.js";
 
 export const getReservations = async (req, res) => {
   try {
@@ -36,7 +36,7 @@ export const getOneReservation = async (req, res) => {
 
 export const createReservation = async (req, res) => {
   try {
-    const { tableId, date, time, guestCount, location, diningArea } = req.body;
+    const { tableId, date, time, guestCount, location, diningArea, telegramId } = req.body;
 
     const table = await Table.findById(tableId);
     if (!table)
@@ -75,6 +75,7 @@ export const createReservation = async (req, res) => {
       ...req.body,
       location: locationData,
       diningArea: diningArea || "main_hall",
+      telegramId: telegramId || null,
     };
 
     const reservation = await Reservation.create(reservationData);
@@ -89,6 +90,11 @@ export const createReservation = async (req, res) => {
 
 export const updateReservation = async (req, res) => {
   try {
+    const oldReservation = await Reservation.findById(req.params.id).populate("tableId", "number capacity location");
+    if (!oldReservation) {
+      return res.status(404).json({ success: false, message: "Bron topilmadi" });
+    }
+
     const reservation = await Reservation.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -97,6 +103,17 @@ export const updateReservation = async (req, res) => {
 
     if (!reservation)
       return res.status(404).json({ success: false, message: "Bron topilmadi" });
+
+    // ✅ Agar status "confirmed" ga o'zgartirilgan bo'lsa va mijozning telegramId'si mavjud bo'lsa
+    if (req.body.status === "confirmed" && reservation.telegramId) {
+      try {
+        const tableNumber = reservation.tableId?.number || "Belgilanmagan";
+        await sendCustomerReservationConfirmation(reservation, tableNumber);
+        console.log(`✅ Bron tasdiqlash xabari mijozga yuborildi (${reservation.customerName})`);
+      } catch (telegramErr) {
+        console.error("❌ Mijozga Telegram xabar yuborishda xatolik:", telegramErr.message);
+      }
+    }
 
     res.json({ success: true, reservation });
   } catch (error) {

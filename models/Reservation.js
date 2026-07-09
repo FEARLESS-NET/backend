@@ -56,6 +56,10 @@ const reservationSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "cancelled"],
       default: "pending",
     },
+    telegramId: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
