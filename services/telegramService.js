@@ -7,7 +7,6 @@ dotenv.config();
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const FRONTEND_URL = (process.env.FRONTEND_URL || "https://qrcode-4-hqdm.onrender.com").replace(/\/$/, "");
-const ADMIN_URL = `${FRONTEND_URL}/admin`;
 
 const sendMessage = async (text, { chatId = CHAT_ID, replyMarkup } = {}) => {
   if (!BOT_TOKEN || !chatId) {
@@ -79,7 +78,6 @@ export const sendOrderNotification = async (order) => {
   const hasValidCoords = typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0);
 
   if (order.deliveryType === "dine-in") {
-    // ✅ Stol raqami va joyi bir qatorda
     const tableLocation = order.tableLocation || "";
     deliveryInfo = `🪑 Stol: #${order.tableNumber || "Belgilanmagan"}${tableLocation ? ` (${tableLocation})` : ""}`;
   } else if (order.deliveryType === "delivery") {
@@ -108,28 +106,24 @@ export const sendOrderNotification = async (order) => {
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  const inlineKeyboard = [];
-  
+  // ✅ FAQAT LOKATSIYA TUGMASI (agar manzil bo'lsa)
+  let replyMarkup = undefined;
   if (order.deliveryType === "delivery" && hasValidCoords) {
-    inlineKeyboard.push([
-      { text: "🗺 Xaritada ochish", url: `https://www.google.com/maps?q=${lat},${lng}` }
-    ]);
+    replyMarkup = {
+      inline_keyboard: [
+        [{ text: "🗺 Xaritada ochish", url: `https://www.google.com/maps?q=${lat},${lng}` }]
+      ]
+    };
   }
-  
-  inlineKeyboard.push([
-    { text: "🛠 Admin panelda ko'rish", url: ADMIN_URL }
-  ]);
 
-  await sendMessage(text, {
-    replyMarkup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
-  });
+  await sendMessage(text, { replyMarkup });
 
   if (order.deliveryType === "delivery" && hasValidCoords) {
     await sendLocation(lat, lng);
   }
 };
 
-// ===== BRON XABARI (ADMINGA) =====
+// ===== BRON XABARI (ADMINGA) - FAQAT RESTORAN MANZILI =====
 export const sendReservationNotification = async (reservation, tableNumber) => {
   const yuborildi = new Date().toLocaleString("ru-RU", {
     day: "2-digit",
@@ -161,14 +155,17 @@ export const sendReservationNotification = async (reservation, tableNumber) => {
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  const inlineKeyboard = [[{ text: "🛠 Admin panelda ko'rish", url: ADMIN_URL }]];
+  // ✅ FAQAT RESTORAN MANZILI
+  const replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🗺 Restoran manzili", url: "https://maps.app.goo.gl/DtBffyxtB2FRbas48" }]
+    ]
+  };
 
-  await sendMessage(text, {
-    replyMarkup: { inline_keyboard: inlineKeyboard },
-  });
+  await sendMessage(text, { replyMarkup });
 };
 
-// ===== BRON TASDIQLASH XABARI (MIJOZGA) =====
+// ===== BRON TASDIQLASH XABARI (MIJOZGA) - FAQAT RESTORAN MANZILI =====
 export const sendCustomerReservationConfirmation = async (reservation, tableNumber) => {
   if (!reservation.telegramId) {
     console.log("ℹ️ Mijozning telegramId'si yo'q — bron tasdiqlash xabari yuborilmadi");
@@ -196,6 +193,7 @@ export const sendCustomerReservationConfirmation = async (reservation, tableNumb
     `🎉 Sizni shu vaqtda kutamiz!\n\n` +
     `📞 Restoran: +998 90 123 45 67`;
 
+  // ✅ FAQAT RESTORAN MANZILI
   const replyMarkup = {
     inline_keyboard: [
       [{ text: "🗺 Restoran manzili", url: "https://maps.app.goo.gl/DtBffyxtB2FRbas48" }]
@@ -205,7 +203,7 @@ export const sendCustomerReservationConfirmation = async (reservation, tableNumb
   return sendCustomerMessage(reservation.telegramId, text, replyMarkup);
 };
 
-// ===== HISOBOT RESET XABARI =====
+// ===== HISOBOT RESET XABARI - TUGMA YO'Q =====
 export const sendResetNotification = async (reportData) => {
   if (!reportData) return false;
   const { period, data = {} } = reportData;
@@ -239,9 +237,8 @@ export const sendResetNotification = async (reportData) => {
     `\n━━━━━━━━━━━━━━━━━━━━\n` +
     `📊 Yangi kun boshlansin! 🚀`;
 
-  const replyMarkup = { inline_keyboard: [[{ text: "📊 Admin panelda ko'rish", url: ADMIN_URL }]] };
-
-  return sendMessage(text, { replyMarkup });
+  // ✅ TUGMA YO'Q
+  return sendMessage(text);
 };
 
 // ===== MIJOZGA XABAR YUBORISH =====
@@ -253,7 +250,7 @@ export const sendCustomerMessage = async (telegramId, text, replyMarkup) => {
   return sendMessage(text, { chatId: telegramId, replyMarkup });
 };
 
-// ===== ZAKAZ HOLATI XABARI (MIJOZGA) =====
+// ===== ZAKAZ HOLATI XABARI (MIJOZGA) - TUGMA YO'Q =====
 export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const orderShort = `#${order._id?.toString().slice(-6) || ""}`;
 
@@ -269,9 +266,8 @@ export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const text = statusTexts[statusKey];
   if (!text) return false;
 
-  const replyMarkup = { inline_keyboard: [[{ text: "🔎 Holatni kuzatish", url: `${FRONTEND_URL}/track` }]] };
-
-  return sendCustomerMessage(order.telegramId, text, replyMarkup);
+  // ✅ TUGMA YO'Q
+  return sendCustomerMessage(order.telegramId, text);
 };
 
 // ===== BOT USERNAME OLISH =====
