@@ -2,6 +2,58 @@ import Menu from "../models/menu.js";
 import path from "path";
 import fs from "fs";
 
+// ✅ YANGI: Silka (URL) orqali berilgan rasmni serverga o'zi yuklab, /uploads
+// papkasiga saqlaydi. Shunda rasm hotlink-himoyalangan tashqi saytlarga
+// (masalan dostavka-eda.com) bog'liq bo'lmay qoladi — o'z domenimizdan xizmat qiladi.
+const downloadImageFromUrl = async (url) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000); // ✅ 15s timeout — server osilib qolmasin
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        // ✅ Ba'zi saytlar User-Agent yo'qligi uchun ham bloklaydi
+        "User-Agent": "Mozilla/5.0 (compatible; QozondaBot/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Rasm yuklab bo'lmadi (status: ${response.status})`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      throw new Error("Silka rasm emas");
+    }
+
+    // ✅ Kengaytmani content-type'dan aniqlash
+    const extMap = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+    };
+    const ext = extMap[contentType.split(";")[0].trim()] || ".jpg";
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    // ✅ Hajm cheklovi — 10MB dan katta rasm qabul qilinmaydi
+    if (buffer.length > 10 * 1024 * 1024) {
+      throw new Error("Rasm hajmi juda katta (10MB dan oshmasligi kerak)");
+    }
+
+    const filename = Date.now() + ext;
+    const uploadPath = path.join(process.cwd(), "uploads", filename);
+    fs.writeFileSync(uploadPath, buffer);
+
+    return `/uploads/${filename}`;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 // ✅ EXPRESS-FILEUPLOAD BILAN
 export const getMenu = async (req, res) => {
   try {
@@ -81,7 +133,22 @@ export const createMenu = async (req, res) => {
       console.log("📸 Saqlanayotgan manzil:", imagePath);
       console.log("📸 Fayl saqlandi:", uploadPath);
     } else if (req.body.image && req.body.image.trim()) {
-      imagePath = req.body.image.trim();
+      const rawUrl = req.body.image.trim();
+      // ✅ YANGI: silka bo'lsa — serverga yuklab olamiz (hotlink himoyasidan qochish uchun)
+      if (rawUrl.startsWith("http")) {
+        try {
+          imagePath = await downloadImageFromUrl(rawUrl);
+          console.log("📸 Silkadan yuklab olindi:", rawUrl, "->", imagePath);
+        } catch (downloadErr) {
+          console.error("❌ Silkadan rasm yuklab bo'lmadi:", downloadErr.message);
+          return res.status(400).json({
+            success: false,
+            message: `Rasm silkasidan yuklab bo'lmadi: ${downloadErr.message}. Iltimos, rasmni fayl sifatida yuklang.`,
+          });
+        }
+      } else {
+        imagePath = rawUrl;
+      }
     }
 
     const menuData = {
