@@ -38,7 +38,13 @@ if (!fs.existsSync(uploadsPath)) {
 const app = express();
 const PORT = process.env.PORT || 3005;
 
-app.use(helmet());
+// ✅ TUZATILDI: Helmet standart holatda "Cross-Origin-Resource-Policy: same-origin"
+// headerini qo'shadi — bu CORS "Access-Control-Allow-Origin: *" bo'lsa ham,
+// brauzerni rasmlarni boshqa domendan (frontend) yuklashdan bloklaydi.
+// Shuning uchun rasmlar hech qachon ko'rinmagan edi.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
 // ============ FILE UPLOAD ============
 app.use(fileUpload({
@@ -135,7 +141,11 @@ app.use('/uploads', express.static(uploadsPath, {
     // ✅ CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Cache-Control', 'no-cache');
+    // ✅ TUZATILDI: 'no-cache' -> uzoq muddatli kesh (fayl nomlari noyob/o'zgarmas
+    // bo'lgani uchun xavfsiz). Brauzer rasmni qayta-qayta yuklamaydi, sayt tezroq ochiladi.
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    // ✅ YANGI: Helmet blokini rasm darajasida ham bekor qilamiz
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
     // ✅ Content-Type
     const ext = path.extname(filePath).toLowerCase();
