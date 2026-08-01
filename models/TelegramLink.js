@@ -1,3 +1,7 @@
+/**
+ * TELEGRAM LINK MODEL – Ulanish tokenlari
+ * token, telegramId, createdAt (600 soniyada eskiradi).
+ */
 import mongoose from "mongoose";
 
 const telegramLinkSchema = new mongoose.Schema({

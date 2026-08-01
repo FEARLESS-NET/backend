@@ -1,3 +1,7 @@
+/**
+ * TO'LOV LINKLARI
+ * Click, Payme, UzumBank to'lov linklarini yaratish va webhook.
+ */
 import Order from "../models/Order.js";
 
 export const createClickPayment = async (req, res) => {

@@ -1,3 +1,7 @@
+/**
+ * HISOBOT ROUTER
+ * /reports – GET, DELETE, /reports/reset (POST).
+ */
 import express from "express";
 import {
   getReports,

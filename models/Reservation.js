@@ -1,3 +1,7 @@
+/**
+ * RESERVATION MODEL – Bronlar
+ * Mijoz, stol (ref), sana, vaqt, mehmonlar soni, joylashuv, diningArea, holat, telegramId.
+ */
 import mongoose from "mongoose";
 
 const reservationSchema = new mongoose.Schema(

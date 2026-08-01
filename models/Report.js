@@ -1,3 +1,7 @@
+/**
+ * REPORT MODEL – Kunlik hisobot
+ * reportNumber (avtomatik), period, startDate, endDate, data (statistika, top items, top customers).
+ */
 import mongoose from "mongoose";
 
 const reportSchema = new mongoose.Schema(

@@ -1,3 +1,7 @@
+/**
+ * ORDER MODEL – Zakazlar
+ * Mijoz ma'lumotlari, taomlar ro'yxati, summa, yetkazib berish turi, holat, to'lov, kuryer, telegramId.
+ */
 import mongoose from "mongoose";
 
 const orderItemSchema = new mongoose.Schema({
@@ -65,7 +69,6 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
-    // ✅ Stol joylashuvi (location) uchun
     tableLocation: {
       type: String,
       default: null,

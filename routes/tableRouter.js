@@ -1,3 +1,7 @@
+/**
+ * STOLLAR ROUTER
+ * /tables – CRUD va /tables/available.
+ */
 import express from "express";
 import {
   getTables,

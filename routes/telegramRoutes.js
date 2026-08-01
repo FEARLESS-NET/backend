@@ -1,3 +1,7 @@
+/**
+ * TELEGRAM ROUTER
+ * /telegram/link (POST), /telegram/link/:token (GET), /telegram/bot-info (GET).
+ */
 import express from "express";
 import { createLinkToken, getLinkStatus, getBotInfo } from "../controllers/telegramLinkController.js";
 

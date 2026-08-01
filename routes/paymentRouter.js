@@ -1,3 +1,7 @@
+/**
+ * TO'LOV ROUTER
+ * /payment/click, /payment/payme, /payment/uzumbank, /payment/webhook.
+ */
 import express from 'express';
 import {
   createClickPayment,

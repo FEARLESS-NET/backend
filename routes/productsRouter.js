@@ -1,3 +1,7 @@
+/**
+ * MENYU ROUTER
+ * /menus – GET, POST, PUT, DELETE.
+ */
 import express from "express";
 import {
   getMenu,
@@ -9,16 +13,12 @@ import {
 
 const router = express.Router();
 
-// ✅ MULTER O'CHIRILDI! Endi multer kerak emas
 router.get("/menus", getMenu);
 router.get("/menus/:id", getOne);
-
-// ✅ express-fileupload avtomatik ishlaydi
 router.post("/menus", createMenu);
 router.put("/menus/:id", updateMenu);
 router.delete("/menus/:id", deleteMenu);
 
-// URL dan rasm yuklash (agar kerak bo'lsa)
 router.post("/upload/url", async (req, res) => {
   try {
     const { url } = req.body;

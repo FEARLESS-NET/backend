@@ -1,3 +1,7 @@
+/**
+ * MENU MODEL – Taomlar
+ * name, price, retsept, image, category.
+ */
 import mongoose from "mongoose";
 
 const menuSchema = new mongoose.Schema(

@@ -1,3 +1,10 @@
+/**
+ * ASOSIY SERVER
+ * Express, CORS, Helmet, compression, fileUpload, rate limit.
+ * /uploads statik papkasi (rasmlar).
+ * Barcha routerlarni ulash.
+ * MongoDB ulanish va Telegram pollingni ishga tushirish.
+ */
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -29,8 +36,6 @@ import paymentRouter from "./routes/paymentRouter.js";
 import reportRouter from "./routes/reportRouter.js";
 import receiptRoutes from "./routes/receiptRoutes.js";
 
-
-// ============ UPLOADS PAPKASI ============
 const uploadsPath = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
@@ -40,15 +45,10 @@ if (!fs.existsSync(uploadsPath)) {
 const app = express();
 const PORT = process.env.PORT || 3005;
 
-// ✅ TUZATILDI: Helmet standart holatda "Cross-Origin-Resource-Policy: same-origin"
-// headerini qo'shadi — bu CORS "Access-Control-Allow-Origin: *" bo'lsa ham,
-// brauzerni rasmlarni boshqa domendan (frontend) yuklashdan bloklaydi.
-// Shuning uchun rasmlar hech qachon ko'rinmagan edi.
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// ============ FILE UPLOAD ============
 app.use(fileUpload({
   limits: { fileSize: 10 * 1024 * 1024 },
   abortOnLimit: true,
@@ -58,7 +58,6 @@ app.use(fileUpload({
   preserveExtension: true,
 }));
 
-// ============ CORS - TO'LIQ SOZLAMALAR ============
 const allowedOrigins = [
   "https://qrcode-4-hqdm.onrender.com",
   "https://backend-4-9otm.onrender.com",
@@ -68,17 +67,12 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
-// ✅ TO'LIQ CORS
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // ✅ Barcha localhost portlariga ruxsat
     if (origin.includes('localhost')) {
       return callback(null, true);
     }
-    
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -95,21 +89,17 @@ app.use(cors({
 
 app.options('*', cors());
 
-// ✅ QO'SHIMCHA CORS - BARCHA SO'ROVLAR UCHUN
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   next();
 });
 
-// ============ RATE LIMIT ============
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 2000,
@@ -132,24 +122,17 @@ const adminLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ============ MIDDLEWARES ============
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(compression({ level: 6, threshold: 1024 }));
 
-// ============ STATIK FAYLLAR ============
 app.use('/uploads', express.static(uploadsPath, {
   setHeaders: (res, filePath) => {
-    // ✅ CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
-    // ✅ TUZATILDI: 'no-cache' -> uzoq muddatli kesh (fayl nomlari noyob/o'zgarmas
-    // bo'lgani uchun xavfsiz). Brauzer rasmni qayta-qayta yuklamaydi, sayt tezroq ochiladi.
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    // ✅ YANGI: Helmet blokini rasm darajasida ham bekor qilamiz
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
-    // ✅ Content-Type
     const ext = path.extname(filePath).toLowerCase();
     if (ext === '.jpg' || ext === '.jpeg') {
       res.setHeader('Content-Type', 'image/jpeg');
@@ -169,7 +152,6 @@ app.use('/uploads', express.static(uploadsPath, {
 
 console.log("📁 Uploads papkasi statik qilindi:", uploadsPath);
 
-// ============ DEBUG ============
 app.get('/test-uploads', (req, res) => {
   try {
     const files = fs.readdirSync(uploadsPath);
@@ -185,7 +167,6 @@ app.get('/test-uploads', (req, res) => {
   }
 });
 
-// ============ LOGGING ============
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin || 'unknown'}`);
   next();
@@ -197,7 +178,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// ============ HEALTH ============
 app.get('/', (req, res) => {
   res.json({ 
     message: "Restaurant API is running ✅", 
@@ -221,7 +201,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ============ ROUTES ============
 app.use('/api/v1/tables', adminLimiter);
 app.use('/api/v1/menus', adminLimiter);
 app.use('/api/v1/reservations', adminLimiter);
@@ -240,7 +219,6 @@ app.use("/api/v1", reportRouter);
 app.use("/api/v1", telegramRoutes);
 app.use("/api/v1", receiptRoutes);
 
-// ============ ERROR HANDLING ============
 app.use((req, res) => {
   res.status(404).json({ 
     success: false, 
@@ -266,7 +244,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ============ START ============
 const startServer = async () => {
   try {
     await connectDB();

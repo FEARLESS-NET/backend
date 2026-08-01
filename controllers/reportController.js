@@ -1,3 +1,8 @@
+/**
+ * KUNLIK HISOBOT
+ * Hisobotni generatsiya qilish, yangilash, reset qilish.
+ * Yakunlangan zakaz/bronlarni o'chirish va hisobotni yangilash.
+ */
 import Order from "../models/Order.js";
 import Reservation from "../models/Reservation.js";
 import Report from "../models/Report.js";

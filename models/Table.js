@@ -1,3 +1,7 @@
+/**
+ * TABLE MODEL – Stollar
+ * number, capacity, isAvailable, location.
+ */
 import mongoose from "mongoose";
 
 const tableSchema = new mongoose.Schema(

@@ -1,10 +1,13 @@
+/**
+ * MongoDB ulanish funksiyasi.
+ * Timeout va qayta ulanish mexanizmi.
+ */
 import mongoose from "mongoose";
 
 const connectDB = async () => {
   try {
     console.log("⏳ MongoDB ga ulanish...");
     
-    // ✅ TIMEOUT QO'SHILDI
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,

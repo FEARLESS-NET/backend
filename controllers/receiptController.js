@@ -1,7 +1,9 @@
-// controllers/receiptController.js
+/**
+ * CHEK (RECEIPT)
+ * HTML chek generatsiya qilish va yuklab olish (chop etish uchun).
+ */
 import Order from "../models/Order.js";
 
-// RESTORAN MA'LUMOTLARI
 const RESTAURANT = {
   name: "QOZONDA",
   address: "Toshkent shahri, Bog'ishamol ko'chasi 15",
@@ -10,7 +12,6 @@ const RESTAURANT = {
   taxId: "123456789",
 };
 
-// HTML shablon - chiroyli dizaynli chek
 const generateReceiptHTML = (order, receiptNumber) => {
   const now = new Date();
   const dateStr = now.toLocaleString('uz-UZ', {
@@ -301,7 +302,6 @@ const generateReceiptHTML = (order, receiptNumber) => {
   `;
 };
 
-// ===== CHEK HTML NI QAYTARISH (Modal uchun) =====
 export const getReceiptHTML = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -338,7 +338,6 @@ export const getReceiptHTML = async (req, res) => {
   }
 };
 
-// ===== CHEKNI PDF QILIB YUKLAB OLISH (Qo'shimcha) =====
 export const downloadReceiptPDF = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -355,7 +354,6 @@ export const downloadReceiptPDF = async (req, res) => {
     const receiptNumber = `CHK-${Date.now().toString().slice(-8)}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     const html = generateReceiptHTML(order, receiptNumber);
 
-    // HTML ni qaytarish - frontend o'zi PDF ga aylantirsin yoki chop qilsin
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
 

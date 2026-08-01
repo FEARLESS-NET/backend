@@ -1,3 +1,7 @@
+/**
+ * ZAKAZLAR ROUTER
+ * /orders – CRUD, /orders/search, /orders/phone/:phone, /orders/status/:id, /orders/delivery/:id, /orders/completed, /orders/force, /orders/status/:status, /orders/old/:days.
+ */
 import express from 'express';
 import {
   getOrders,

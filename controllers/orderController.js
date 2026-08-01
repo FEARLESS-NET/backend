@@ -1,3 +1,8 @@
+/**
+ * ZAKAZ CRUD
+ * Zakaz yaratish, o'qish, status/delivery status yangilash, telefon orqali qidirish.
+ * Zakaz yaratilganda hisobot yangilanadi va admin Telegram xabar yuboriladi.
+ */
 import Order from "../models/Order.js";
 import { sendOrderNotification } from "../services/telegramService.js";
 import { generateDailyReportOnOrder } from "./reportController.js";

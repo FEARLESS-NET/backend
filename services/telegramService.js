@@ -1,3 +1,14 @@
+/**
+ * TELEGRAM XIZMATI
+ * Bot orqali xabar yuborish:
+ * - sendOrderNotification – admin ga yangi zakaz.
+ * - sendReservationNotification – admin ga yangi bron.
+ * - sendCustomerReservationConfirmation – mijozga bron tasdiqlanganda.
+ * - notifyCustomerOrderStatus – mijozga zakaz holati o'zgarganda.
+ * - sendResetNotification – hisobot resetlanganda admin ga.
+ * - getBotUsername – bot username ni keshlash.
+ * - startTelegramPolling – /start va /start token komandalarini tinglash.
+ */
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import TelegramLink from "../models/TelegramLink.js";
@@ -53,7 +64,6 @@ const sendLocation = async (latitude, longitude, chatId = CHAT_ID) => {
   }
 };
 
-// ===== ZAKAZ XABARI (ADMINGA) =====
 export const sendOrderNotification = async (order) => {
   const items = order.items
     .map(
@@ -95,7 +105,7 @@ export const sendOrderNotification = async (order) => {
 
   const text =
     `🛒 <b>🔥 YANGI ZAKAZ!</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `👤 Mijoz: ${order.customerName}\n` +
     `📞 Tel: ${order.phone}\n` +
     `📦 Taomlar:\n${items}\n` +
@@ -103,10 +113,9 @@ export const sendOrderNotification = async (order) => {
     `🚚 Turi: ${typeLabel}\n` +
     (deliveryInfo ? `${deliveryInfo}\n` : "") +
     (order.note ? `📝 Izoh: ${order.note}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  // ✅ FAQAT LOKATSIYA TUGMASI (agar manzil bo'lsa)
   let replyMarkup = undefined;
   if (order.deliveryType === "delivery" && hasValidCoords) {
     replyMarkup = {
@@ -123,7 +132,6 @@ export const sendOrderNotification = async (order) => {
   }
 };
 
-// ===== BRON XABARI (ADMINGA) - FAQAT RESTORAN MANZILI =====
 export const sendReservationNotification = async (reservation, tableNumber) => {
   const yuborildi = new Date().toLocaleString("ru-RU", {
     day: "2-digit",
@@ -143,8 +151,8 @@ export const sendReservationNotification = async (reservation, tableNumber) => {
   const diningAreaText = diningAreaMap[reservation.diningArea] || reservation.diningArea;
 
   const text =
-    `📅 <b>📌 YANGI BRON!</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📨 <b>📌 YANGI BRON!</b>\n` +
+    `────────────────────\n` +
     `👤 Mijoz: ${reservation.customerName}\n` +
     `📞 Tel: ${reservation.phone}\n` +
     `🪑 Stol: #${tableNumber} (${diningAreaText})\n` +
@@ -152,10 +160,9 @@ export const sendReservationNotification = async (reservation, tableNumber) => {
     `📆 Sana: ${reservation.date}\n` +
     `🕐 Vaqt: ${reservation.time}\n` +
     (reservation.note ? `📝 Izoh: ${reservation.note}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `⏱ Yuborildi: ${yuborildi}`;
 
-  // ✅ FAQAT RESTORAN MANZILI
   const replyMarkup = {
     inline_keyboard: [
       [{ text: "🗺 Restoran manzili", url: "https://maps.app.goo.gl/DtBffyxtB2FRbas48" }]
@@ -165,7 +172,6 @@ export const sendReservationNotification = async (reservation, tableNumber) => {
   await sendMessage(text, { replyMarkup });
 };
 
-// ===== BRON TASDIQLASH XABARI (MIJOZGA) - FAQAT RESTORAN MANZILI =====
 export const sendCustomerReservationConfirmation = async (reservation, tableNumber) => {
   if (!reservation.telegramId) {
     console.log("ℹ️ Mijozning telegramId'si yo'q — bron tasdiqlash xabari yuborilmadi");
@@ -182,18 +188,17 @@ export const sendCustomerReservationConfirmation = async (reservation, tableNumb
 
   const text =
     `✅ <b>Broningiz tasdiqlandi!</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `👤 Mijoz: ${reservation.customerName}\n` +
     `🪑 Stol: #${tableNumber} (${diningAreaText})\n` +
     `👥 Mehmonlar: ${reservation.guestCount} kishi\n` +
     `📆 Sana: ${reservation.date}\n` +
     `🕐 Vaqt: ${reservation.time}\n` +
     (reservation.note ? `📝 Izoh: ${reservation.note}\n` : "") +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `🎉 Sizni shu vaqtda kutamiz!\n\n` +
     `📞 Restoran: +998 90 123 45 67`;
 
-  // ✅ FAQAT RESTORAN MANZILI
   const replyMarkup = {
     inline_keyboard: [
       [{ text: "🗺 Restoran manzili", url: "https://maps.app.goo.gl/DtBffyxtB2FRbas48" }]
@@ -203,7 +208,6 @@ export const sendCustomerReservationConfirmation = async (reservation, tableNumb
   return sendCustomerMessage(reservation.telegramId, text, replyMarkup);
 };
 
-// ===== HISOBOT RESET XABARI - TUGMA YO'Q =====
 export const sendResetNotification = async (reportData) => {
   if (!reportData) return false;
   const { period, data = {} } = reportData;
@@ -223,25 +227,23 @@ export const sendResetNotification = async (reportData) => {
   });
 
   const text =
-    `🔄 <b>📅 KUNLIK HISOBOT RESET QILINDI!</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🔄 <b>📊 KUNLIK HISOBOT RESET QILINDI!</b>\n` +
+    `────────────────────\n` +
     `📅 Sana: ${period}\n` +
     `🛒 Zakazlar: ${data.totalOrders || 0}\n` +
     `💰 Daromad: ${(data.totalRevenue || 0).toLocaleString()} so'm\n` +
     `📋 Bronlar: ${data.totalReservations || 0}\n` +
     `📈 O'rtacha chek: ${Math.round(data.averageOrderValue || 0).toLocaleString()} so'm\n` +
     `🔥 Eng ko'p sotilganlar:\n${topItemsText}\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `────────────────────\n` +
     `⏱ Reset vaqti: ${yuborildi}\n` +
     `✅ Hisobot 0 ga tiklandi!` +
-    `\n━━━━━━━━━━━━━━━━━━━━\n` +
+    `\n────────────────────\n` +
     `📊 Yangi kun boshlansin! 🚀`;
 
-  // ✅ TUGMA YO'Q
   return sendMessage(text);
 };
 
-// ===== MIJOZGA XABAR YUBORISH =====
 export const sendCustomerMessage = async (telegramId, text, replyMarkup) => {
   if (!telegramId) {
     console.log("ℹ️ Mijozning telegramId'si yo'q — Telegram orqali xabar yuborilmadi");
@@ -250,7 +252,6 @@ export const sendCustomerMessage = async (telegramId, text, replyMarkup) => {
   return sendMessage(text, { chatId: telegramId, replyMarkup });
 };
 
-// ===== ZAKAZ HOLATI XABARI (MIJOZGA) - TUGMA YO'Q =====
 export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const orderShort = `#${order._id?.toString().slice(-6) || ""}`;
 
@@ -266,11 +267,9 @@ export const notifyCustomerOrderStatus = async (order, statusKey) => {
   const text = statusTexts[statusKey];
   if (!text) return false;
 
-  // ✅ TUGMA YO'Q
   return sendCustomerMessage(order.telegramId, text);
 };
 
-// ===== BOT USERNAME OLISH =====
 let cachedBotUsername = null;
 
 export const getBotUsername = async () => {
@@ -289,7 +288,6 @@ export const getBotUsername = async () => {
   return null;
 };
 
-// ===== POLLING =====
 let pollingOffset = 0;
 let pollingStarted = false;
 

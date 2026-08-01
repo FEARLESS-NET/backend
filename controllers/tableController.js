@@ -1,3 +1,7 @@
+/**
+ * STOLLAR CRUD
+ * Statistikani olish, mavjud stollarni vaqt bo'yicha tekshirish.
+ */
 import Table from "../models/Table.js";
 import Reservation from "../models/Reservation.js";
 

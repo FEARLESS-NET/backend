@@ -1,19 +1,19 @@
+/**
+ * MENYU CRUD
+ * Rasmni fayl yoki URL dan yuklab olish (downloadImageFromUrl).
+ */
 import Menu from "../models/menu.js";
 import path from "path";
 import fs from "fs";
 
-// ✅ YANGI: Silka (URL) orqali berilgan rasmni serverga o'zi yuklab, /uploads
-// papkasiga saqlaydi. Shunda rasm hotlink-himoyalangan tashqi saytlarga
-// (masalan dostavka-eda.com) bog'liq bo'lmay qoladi — o'z domenimizdan xizmat qiladi.
 const downloadImageFromUrl = async (url) => {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // ✅ 15s timeout — server osilib qolmasin
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        // ✅ Ba'zi saytlar User-Agent yo'qligi uchun ham bloklaydi
         "User-Agent": "Mozilla/5.0 (compatible; QozondaBot/1.0)",
       },
     });
@@ -27,7 +27,6 @@ const downloadImageFromUrl = async (url) => {
       throw new Error("Silka rasm emas");
     }
 
-    // ✅ Kengaytmani content-type'dan aniqlash
     const extMap = {
       "image/jpeg": ".jpg",
       "image/jpg": ".jpg",
@@ -39,7 +38,6 @@ const downloadImageFromUrl = async (url) => {
 
     const buffer = Buffer.from(await response.arrayBuffer());
 
-    // ✅ Hajm cheklovi — 10MB dan katta rasm qabul qilinmaydi
     if (buffer.length > 10 * 1024 * 1024) {
       throw new Error("Rasm hajmi juda katta (10MB dan oshmasligi kerak)");
     }
@@ -54,7 +52,6 @@ const downloadImageFromUrl = async (url) => {
   }
 };
 
-// ✅ EXPRESS-FILEUPLOAD BILAN
 export const getMenu = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -107,7 +104,6 @@ export const getOne = async (req, res) => {
   }
 };
 
-// ✅ CREATE MENU - EXPRESS-FILEUPLOAD
 export const createMenu = async (req, res) => {
   try {
     let imagePath = "";
@@ -115,12 +111,11 @@ export const createMenu = async (req, res) => {
     if (req.files && req.files.image) {
       const file = req.files.image;
       
-      // ✅ .fif, .jfif ni .jpg ga o'zgartirish
       let ext = path.extname(file.name).toLowerCase();
       const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
       
       if (!allowedExt.includes(ext)) {
-        ext = '.jpg'; // Default .jpg
+        ext = '.jpg';
       }
       
       const filename = Date.now() + ext;
@@ -134,7 +129,6 @@ export const createMenu = async (req, res) => {
       console.log("📸 Fayl saqlandi:", uploadPath);
     } else if (req.body.image && req.body.image.trim()) {
       const rawUrl = req.body.image.trim();
-      // ✅ YANGI: silka bo'lsa — serverga yuklab olamiz (hotlink himoyasidan qochish uchun)
       if (rawUrl.startsWith("http")) {
         try {
           imagePath = await downloadImageFromUrl(rawUrl);
@@ -174,12 +168,10 @@ export const createMenu = async (req, res) => {
   }
 };
 
-// ✅ UPDATE MENU - EXPRESS-FILEUPLOAD
 export const updateMenu = async (req, res) => {
   try {
     let imagePath = "";
     
-    // ✅ express-fileupload bilan rasm yangilash
     if (req.files && req.files.image) {
       const file = req.files.image;
       const filename = Date.now() + path.extname(file.name);

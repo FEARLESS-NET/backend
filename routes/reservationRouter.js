@@ -1,3 +1,7 @@
+/**
+ * BRONLAR ROUTER
+ * /reservations – CRUD, /reservations/nearby, /reservations/completed (delete), /reservations/force.
+ */
 import express from "express";
 import {
   getReservations,

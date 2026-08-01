@@ -1,3 +1,7 @@
+/**
+ * TELEGRAM LINK
+ * Link token yaratish, holatini tekshirish, bot username olish.
+ */
 import crypto from "crypto";
 import TelegramLink from "../models/TelegramLink.js";
 import { getBotUsername } from "../services/telegramService.js";

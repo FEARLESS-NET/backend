@@ -1,3 +1,8 @@
+/**
+ * BRON CRUD
+ * Bron yaratish, o'qish, yangilash, bekor qilish.
+ * Bron yaratilganda admin Telegram xabar, tasdiqlanganda mijozga xabar.
+ */
 import Reservation from "../models/Reservation.js";
 import Table from "../models/Table.js";
 import { sendReservationNotification, sendCustomerReservationConfirmation } from "../services/telegramService.js";
@@ -104,7 +109,6 @@ export const updateReservation = async (req, res) => {
     if (!reservation)
       return res.status(404).json({ success: false, message: "Bron topilmadi" });
 
-    // ✅ Agar status "confirmed" ga o'zgartirilgan bo'lsa va mijozning telegramId'si mavjud bo'lsa
     if (req.body.status === "confirmed" && reservation.telegramId) {
       try {
         const tableNumber = reservation.tableId?.number || "Belgilanmagan";
