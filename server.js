@@ -27,6 +27,7 @@ import reservationRouter from "./routes/reservationRouter.js";
 import orderRouter from "./routes/orderRouter.js";
 import paymentRouter from "./routes/paymentRouter.js";
 import reportRouter from "./routes/reportRouter.js";
+import receiptRoutes from "./routes/receiptRoutes.js";
 
 
 // ============ UPLOADS PAPKASI ============
@@ -237,6 +238,7 @@ app.use("/api/v1", orderRouter);
 app.use("/api/v1", paymentRouter);
 app.use("/api/v1", reportRouter);
 app.use("/api/v1", telegramRoutes);
+app.use("/api/v1", receiptRoutes);
 
 // ============ ERROR HANDLING ============
 app.use((req, res) => {
