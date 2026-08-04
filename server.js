@@ -1,7 +1,7 @@
 /**
  * ASOSIY SERVER
  * Express, CORS, Helmet, compression, fileUpload, rate limit.
- * /uploads statik papkasi (rasmlar).
+ * Rasmlar endi ImgBB'da saqlanadi (server diskida emas).
  * Barcha routerlarni ulash.
  * MongoDB ulanish va Telegram pollingni ishga tushirish.
  */
@@ -20,7 +20,6 @@ dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1']);
 
 import express from "express";
 import cors from "cors";
-import fs from "fs";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import fileUpload from 'express-fileupload';
@@ -34,13 +33,7 @@ import reservationRouter from "./routes/reservationRouter.js";
 import orderRouter from "./routes/orderRouter.js";
 import paymentRouter from "./routes/paymentRouter.js";
 import reportRouter from "./routes/reportRouter.js";
-import receiptRoutes from "./routes/receiptRoutes.js";
-
-const uploadsPath = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true });
-  console.log("📁 Uploads papkasi yaratildi:", uploadsPath);
-}
+import receiptRoutes from "./routes/receiptRouter.js";
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -125,47 +118,6 @@ const adminLimiter = rateLimit({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(compression({ level: 6, threshold: 1024 }));
-
-app.use('/uploads', express.static(uploadsPath, {
-  setHeaders: (res, filePath) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
-    const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.jpg' || ext === '.jpeg') {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (ext === '.png') {
-      res.setHeader('Content-Type', 'image/png');
-    } else if (ext === '.webp') {
-      res.setHeader('Content-Type', 'image/webp');
-    } else if (ext === '.jfif' || ext === '.fif') {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (ext === '.gif') {
-      res.setHeader('Content-Type', 'image/gif');
-    } else if (ext === '.svg') {
-      res.setHeader('Content-Type', 'image/svg+xml');
-    }
-  }
-}));
-
-console.log("📁 Uploads papkasi statik qilindi:", uploadsPath);
-
-app.get('/test-uploads', (req, res) => {
-  try {
-    const files = fs.readdirSync(uploadsPath);
-    res.json({
-      success: true,
-      path: uploadsPath,
-      exists: fs.existsSync(uploadsPath),
-      files: files,
-      fileUrls: files.map(f => `/uploads/${f}`)
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin || 'unknown'}`);
