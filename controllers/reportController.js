@@ -1,358 +1,346 @@
 /**
- * KUNLIK HISOBOT
- * Hisobotni generatsiya qilish, yangilash, reset qilish.
- * Yakunlangan zakaz/bronlarni o'chirish va hisobotni yangilash.
- * Barcha sana hisoblari Toshkent vaqt zonasiga (UTC+5) moslashtirilgan.
+ * ZAKAZ CRUD
+ * Zakaz yaratish, o'qish, status/delivery status yangilash, telefon orqali qidirish.
+ * Zakaz yaratilganda/o'chirilganda hisobot avtomatik yangilanadi va admin Telegram xabar yuboriladi.
  */
 import Order from "../models/Order.js";
-import Reservation from "../models/Reservation.js";
-import Report from "../models/Report.js";
-import { sendResetNotification } from "../services/telegramService.js";
+import { sendOrderNotification } from "../services/telegramService.js";
+import { generateDailyReportOnOrder } from "./reportController.js";
+import { notifyCustomerOrderStatus } from "../services/telegramService.js";
 
-const TASHKENT_OFFSET_MS = 5 * 60 * 60 * 1000; // UTC+5
-
-// Toshkent vaqti bo'yicha "bugun"ning boshi va oxirini UTC Date obyektlari sifatida qaytaradi
-const getDailyDateRange = () => {
-  const nowTashkent = new Date(Date.now() + TASHKENT_OFFSET_MS);
-
-  const startDate = new Date(Date.UTC(
-    nowTashkent.getUTCFullYear(),
-    nowTashkent.getUTCMonth(),
-    nowTashkent.getUTCDate(),
-    0, 0, 0, 0
-  ) - TASHKENT_OFFSET_MS);
-
-  const endDate = new Date(Date.UTC(
-    nowTashkent.getUTCFullYear(),
-    nowTashkent.getUTCMonth(),
-    nowTashkent.getUTCDate(),
-    23, 59, 59, 999
-  ) - TASHKENT_OFFSET_MS);
-
-  return { startDate, endDate };
-};
-
-// Toshkent vaqti bo'yicha "YYYY-MM-DD" formatidagi kun kodi (hisobot davri uchun)
-const getTashkentPeriodKey = (date) => {
-  const tashkentDate = new Date(date.getTime() + TASHKENT_OFFSET_MS);
-  return tashkentDate.toISOString().split("T")[0];
-};
-
-const getNextReportNumber = async () => {
-  const lastReport = await Report.findOne().sort({ reportNumber: -1 });
-  return lastReport ? lastReport.reportNumber + 1 : 1;
-};
-
-const generateDailyReport = async () => {
+export const getOrders = async (req, res) => {
   try {
-    const { startDate, endDate } = getDailyDateRange();
+    const { status, deliveryStatus } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (deliveryStatus) filter.deliveryStatus = deliveryStatus;
 
-    const orders = await Order.find({
-      createdAt: { $gte: startDate, $lte: endDate },
-    });
+    const orders = await Order.find(filter)
+      .populate("items.menuItem", "name price")
+      .sort({ createdAt: -1 });
 
-    const reservations = await Reservation.find({
-      createdAt: { $gte: startDate, $lte: endDate },
-    });
-
-    // Bekor qilinmagan (real daromad keltiradigan) zakazlar
-    const activeOrders = orders.filter((o) => o.status !== "cancelled");
-
-    const totalOrders = orders.length;
-    const cancelledOrders = orders.filter((o) => o.status === "cancelled").length;
-    // Daromad faqat bekor qilinmagan zakazlardan hisoblanadi
-    const totalRevenue = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-    const totalReservations = reservations.length;
-    const averageOrderValue = activeOrders.length > 0 ? totalRevenue / activeOrders.length : 0;
-
-    const ordersByStatus = {
-      pending: orders.filter((o) => o.status === "pending").length,
-      confirmed: orders.filter((o) => o.status === "confirmed").length,
-      preparing: orders.filter((o) => o.status === "preparing").length,
-      ready: orders.filter((o) => o.status === "ready").length,
-      cancelled: cancelledOrders,
-    };
-
-    const ordersByDeliveryType = {
-      "dine-in": activeOrders.filter((o) => o.deliveryType === "dine-in").length,
-      takeaway: activeOrders.filter((o) => o.deliveryType === "takeaway").length,
-      delivery: activeOrders.filter((o) => o.deliveryType === "delivery").length,
-    };
-
-    const itemMap = {};
-    activeOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        if (!itemMap[item.name]) {
-          itemMap[item.name] = { quantity: 0, revenue: 0 };
-        }
-        itemMap[item.name].quantity += item.quantity;
-        itemMap[item.name].revenue += item.price * item.quantity;
-      });
-    });
-
-    const topItems = Object.entries(itemMap)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10);
-
-    const customerMap = {};
-    activeOrders.forEach((order) => {
-      const key = order.phone;
-      if (!customerMap[key]) {
-        customerMap[key] = { name: order.customerName, phone: order.phone, orders: 0, totalSpent: 0 };
-      }
-      customerMap[key].orders += 1;
-      customerMap[key].totalSpent += order.totalPrice || 0;
-    });
-
-    const topCustomers = Object.values(customerMap)
-      .sort((a, b) => b.totalSpent - a.totalSpent)
-      .slice(0, 5);
-
-    const period = getTashkentPeriodKey(startDate);
-
-    return {
-      type: "daily",
-      period,
-      startDate,
-      endDate,
-      data: {
-        totalOrders,
-        cancelledOrders,
-        totalRevenue,
-        totalReservations,
-        averageOrderValue,
-        ordersByStatus,
-        ordersByDeliveryType,
-        topItems,
-        topCustomers,
-      },
-    };
+    res.json({ success: true, count: orders.length, orders });
   } catch (error) {
-    console.error("Daily report generation error:", error);
-    throw error;
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-const upsertDailyReport = async () => {
-  const reportData = await generateDailyReport();
-
-  let report = await Report.findOne({ type: "daily", period: reportData.period });
-
-  if (report) {
-    report.data = reportData.data;
-    report.startDate = reportData.startDate;
-    report.endDate = reportData.endDate;
-    await report.save();
-    console.log(`✅ Kunlik hisobot yangilandi (joriy: ${reportData.data.totalOrders} zakaz)`);
-  } else {
-    const reportNumber = await getNextReportNumber();
-    report = await Report.create({
-      ...reportData,
-      uniqueId: `daily-${Date.now()}`,
-      reportNumber,
-    });
-    console.log(`✅ Yangi kunlik hisobot yaratildi (№${reportNumber})`);
-  }
-
-  return report;
-};
-
-const createZeroDailyReport = async () => {
-  const { startDate, endDate } = getDailyDateRange();
-  const reportNumber = await getNextReportNumber();
-  const period = getTashkentPeriodKey(startDate);
-
-  return await Report.create({
-    reportNumber,
-    type: "daily",
-    period,
-    startDate,
-    endDate,
-    uniqueId: `daily-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    data: {
-      totalOrders: 0,
-      cancelledOrders: 0,
-      totalRevenue: 0,
-      totalReservations: 0,
-      averageOrderValue: 0,
-      ordersByStatus: {
-        pending: 0,
-        confirmed: 0,
-        preparing: 0,
-        ready: 0,
-        cancelled: 0,
-      },
-      ordersByDeliveryType: {
-        "dine-in": 0,
-        takeaway: 0,
-        delivery: 0,
-      },
-      topItems: [],
-      topCustomers: [],
-    },
-    isActive: true,
-  });
-};
-
-export const generateDailyReportOnOrder = async () => {
+export const getOneOrder = async (req, res) => {
   try {
-    console.log("📊 ===== KUNLIK HISOBOT YANGILANMOQDA =====");
-    await upsertDailyReport();
-    console.log("✅ Kunlik hisobot yangilandi");
+    const order = await Order.findById(req.params.id).populate(
+      "items.menuItem",
+      "name price image"
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+    res.json({ success: true, order });
   } catch (error) {
-    console.error("❌ Hisobot yaratishda xatolik:", error);
-    throw error;
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const resetDailyReport = async (req, res) => {
+export const createOrder = async (req, res) => {
   try {
-    console.log("🔄 ===== KUNLIK HISOBOT 0 GA TIKLANMOQDA =====");
-
-    const beforeReset = await generateDailyReport();
-    console.log(`📊 Reset oldidagi ma'lumotlar: ${beforeReset.data.totalOrders} zakaz, ${beforeReset.data.totalRevenue} so'm`);
-
-    const deleted = await Report.deleteMany({ type: "daily" });
-    console.log(`🗑 ${deleted.deletedCount} ta eski kunlik hisobot o'chirildi`);
-
-    const zeroReport = await createZeroDailyReport();
-    console.log(`✅ Yangi 0 kunlik hisobot yaratildi (№${zeroReport.reportNumber})`);
+    console.log("📝 Yangi zakaz yaratilmoqda...");
+    
+    const order = await Order.create(req.body);
+    console.log(`✅ Zakaz yaratildi: ${order._id}`);
 
     try {
-      await sendResetNotification(beforeReset);
-      console.log(`✅ Reset haqida Telegramga xabar yuborildi`);
+      await sendOrderNotification(order);
+      console.log("✅ Zakaz haqida Telegram xabar yuborildi");
     } catch (telegramErr) {
-      console.warn('⚠️ Telegram xabar yuborilmadi:', telegramErr.message);
+      console.error("❌ Telegram xatosi:", telegramErr.message);
+    }
+
+    try {
+      console.log("📊 Kunlik hisobot yangilanmoqda...");
+      await generateDailyReportOnOrder();
+      console.log("✅ Kunlik hisobot muvaffaqiyatli yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yaratishda xatolik:", reportErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      order,
+      message: "✅ Zakaz yaratildi! Kunlik hisobot yangilandi."
+    });
+
+  } catch (error) {
+    console.error("❌ Create order error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { paymentStatus, paymentId } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { paymentStatus, paymentId },
+      { new: true }
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+
+    try {
+      await notifyCustomerOrderStatus(order, status);
+    } catch (notifyErr) {
+      console.error("❌ Mijozga xabar yuborishda xatolik:", notifyErr.message);
+    }
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log(`✅ Status "${status}" ga o'zgardi, kunlik hisobot yangilandi`);
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { deliveryStatus, courierName, courierPhone } = req.body;
+    
+    const updateData = { deliveryStatus, courierName, courierPhone };
+    if (deliveryStatus === "delivered") {
+      updateData.status = "ready";
+    }
+    
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+
+    try {
+      await notifyCustomerOrderStatus(order, deliveryStatus);
+    } catch (notifyErr) {
+      console.error("❌ Mijozga xabar yuborishda xatolik:", notifyErr.message);
+    }
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log(`✅ Yetkazish holati "${deliveryStatus}" ga o'zgardi, kunlik hisobot yangilandi`);
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
+    res.json({ success: true, order });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getOrderByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const orders = await Order.find({ phone })
+      .populate("items.menuItem", "name price image")
+      .sort({ createdAt: -1 });
+    
+    if (orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+    
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const searchOrders = async (req, res) => {
+  try {
+    const { phone, name } = req.query;
+
+    if (!phone || !name) {
+      return res.status(400).json({
+        success: false,
+        message: "Telefon raqami va ism kiritilishi shart",
+      });
+    }
+
+    const orders = await Order.find({
+      phone: phone.trim(),
+      customerName: { $regex: name.trim(), $options: "i" },
+    })
+      .populate("items.menuItem", "name price image")
+      .sort({ createdAt: -1 });
+
+    if (orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteOrder = async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
+    }
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Zakaz o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
+    res.json({ success: true, message: "✅ Zakaz o'chirildi" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteAllOrders = async (req, res) => {
+  try {
+    const result = await Order.deleteMany({});
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Barcha zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
     }
 
     res.json({
       success: true,
-      message: `✅ Kunlik hisobot 0 ga tiklandi!`,
-      deletedCount: deleted.deletedCount,
-      report: zeroReport,
-      beforeReset: beforeReset.data,
+      message: `✅ Barcha zakazlar o'chirildi (${result.deletedCount} ta)`,
+      deletedCount: result.deletedCount,
     });
-
   } catch (error) {
-    console.error('❌ Reset xatosi:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Reset qilishda xatolik yuz berdi'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const deleteCompletedOrdersAndUpdateDaily = async (req, res) => {
+export const deleteOrdersByStatus = async (req, res) => {
   try {
-    console.log("🔄 ===== YAKUNLANGAN ZAKAZLAR O'CHIRILMOQDA =====");
+    const { status } = req.params;
+    const result = await Order.deleteMany({ status });
 
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Status bo'yicha zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `✅ "${status}" statusli zakazlar o'chirildi (${result.deletedCount} ta)`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteOldOrders = async (req, res) => {
+  try {
+    const { days } = req.params;
+    const date = new Date();
+    date.setDate(date.getDate() - parseInt(days));
+
+    const result = await Order.deleteMany({
+      createdAt: { $lt: date },
+    });
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Eski zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `✅ ${days} kundan eski zakazlar o'chirildi (${result.deletedCount} ta)`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteCompletedOrders = async (req, res) => {
+  try {
     const result = await Order.deleteMany({
       $or: [
         { status: "ready" },
         { deliveryStatus: "delivered" }
       ]
     });
-    console.log(`🗑 ${result.deletedCount} ta yakunlangan zakaz o'chirildi`);
 
-    await upsertDailyReport();
-    console.log(`✅ Kunlik hisobot yangilandi`);
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Yakunlangan zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
 
     res.json({
       success: true,
-      message: `✅ Yakunlangan zakazlar o'chirildi (${result.deletedCount} ta)!\n✅ Kunlik hisobot yangilandi!`,
+      message: `✅ Yakunlangan zakazlar o'chirildi (${result.deletedCount} ta)\n✅ Kunlik hisobot yangilandi!`,
       deletedCount: result.deletedCount,
     });
-
   } catch (error) {
-    console.error('❌ Xatolik:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Xatolik yuz berdi'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const deleteCompletedReservationsAndUpdateDaily = async (req, res) => {
+export const deleteAllOrdersForce = async (req, res) => {
   try {
-    console.log("🔄 ===== YAKUNLANGAN BRONLAR O'CHIRILMOQDA =====");
+    const count = await Order.countDocuments();
+    const result = await Order.deleteMany({});
 
-    const result = await Reservation.deleteMany({
-      status: { $in: ["confirmed", "cancelled"] }
-    });
-    console.log(`🗑 ${result.deletedCount} ta yakunlangan bron o'chirildi`);
-
-    await upsertDailyReport();
-    console.log(`✅ Kunlik hisobot yangilandi`);
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Barcha zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
 
     res.json({
       success: true,
-      message: `✅ Yakunlangan bronlar o'chirildi (${result.deletedCount} ta)!\n✅ Kunlik hisobot yangilandi!`,
+      message: `✅ Barcha ${result.deletedCount} ta zakaz butunlay o'chirildi!\n✅ Kunlik hisobot yangilandi!`,
       deletedCount: result.deletedCount,
-    });
-
-  } catch (error) {
-    console.error('❌ Xatolik:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Xatolik yuz berdi'
-    });
-  }
-};
-
-export const getReports = async (req, res) => {
-  try {
-    const { limit = 100 } = req.query;
-
-    const reports = await Report.find({ type: "daily" })
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
-
-    res.json({
-      success: true,
-      count: reports.length,
-      reports,
-      total: await Report.countDocuments({ type: "daily" })
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const getOneReport = async (req, res) => {
-  try {
-    const report = await Report.findById(req.params.id);
-    if (!report) {
-      return res.status(404).json({ success: false, message: "Hisobot topilmadi" });
-    }
-    res.json({ success: true, report });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const deleteReport = async (req, res) => {
-  try {
-    const report = await Report.findByIdAndDelete(req.params.id);
-    if (!report) {
-      return res.status(404).json({ success: false, message: "Hisobot topilmadi" });
-    }
-    res.json({
-      success: true,
-      message: `✅ Hisobot №${report.reportNumber} o'chirildi!`
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const deleteAllReports = async (req, res) => {
-  try {
-    const result = await Report.deleteMany({ type: "daily" });
-    res.json({
-      success: true,
-      message: `✅ Barcha kunlik hisobotlar o'chirildi (${result.deletedCount} ta)!`,
-      deletedCount: result.deletedCount
+      totalBefore: count,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

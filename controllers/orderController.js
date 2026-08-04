@@ -106,10 +106,17 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
-    await notifyCustomerOrderStatus(order, status);
+    try {
+      await notifyCustomerOrderStatus(order, status);
+    } catch (notifyErr) {
+      console.error("❌ Mijozga xabar yuborishda xatolik:", notifyErr.message);
+    }
 
-    if (status === "ready") {
+    try {
       await generateDailyReportOnOrder();
+      console.log(`✅ Status "${status}" ga o'zgardi, kunlik hisobot yangilandi`);
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
     }
 
     res.json({ success: true, order });
@@ -137,10 +144,17 @@ export const updateDeliveryStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
 
-    await notifyCustomerOrderStatus(order, deliveryStatus);
+    try {
+      await notifyCustomerOrderStatus(order, deliveryStatus);
+    } catch (notifyErr) {
+      console.error("❌ Mijozga xabar yuborishda xatolik:", notifyErr.message);
+    }
 
-    if (deliveryStatus === "delivered") {
+    try {
       await generateDailyReportOnOrder();
+      console.log(`✅ Yetkazish holati "${deliveryStatus}" ga o'zgardi, kunlik hisobot yangilandi`);
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
     }
 
     res.json({ success: true, order });
