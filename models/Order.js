@@ -28,7 +28,7 @@ const orderSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, "Telefon raqam kiritilishi shart"],
+      
       trim: true,
     },
     items: {
