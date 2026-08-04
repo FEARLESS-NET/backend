@@ -55,27 +55,32 @@ const generateDailyReport = async () => {
       createdAt: { $gte: startDate, $lte: endDate },
     });
 
+    // Bekor qilinmagan (real daromad keltiradigan) zakazlar
+    const activeOrders = orders.filter((o) => o.status !== "cancelled");
+
     const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+    const cancelledOrders = orders.filter((o) => o.status === "cancelled").length;
+    // Daromad faqat bekor qilinmagan zakazlardan hisoblanadi
+    const totalRevenue = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
     const totalReservations = reservations.length;
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const averageOrderValue = activeOrders.length > 0 ? totalRevenue / activeOrders.length : 0;
 
     const ordersByStatus = {
       pending: orders.filter((o) => o.status === "pending").length,
       confirmed: orders.filter((o) => o.status === "confirmed").length,
       preparing: orders.filter((o) => o.status === "preparing").length,
       ready: orders.filter((o) => o.status === "ready").length,
-      cancelled: orders.filter((o) => o.status === "cancelled").length,
+      cancelled: cancelledOrders,
     };
 
     const ordersByDeliveryType = {
-      "dine-in": orders.filter((o) => o.deliveryType === "dine-in").length,
-      takeaway: orders.filter((o) => o.deliveryType === "takeaway").length,
-      delivery: orders.filter((o) => o.deliveryType === "delivery").length,
+      "dine-in": activeOrders.filter((o) => o.deliveryType === "dine-in").length,
+      takeaway: activeOrders.filter((o) => o.deliveryType === "takeaway").length,
+      delivery: activeOrders.filter((o) => o.deliveryType === "delivery").length,
     };
 
     const itemMap = {};
-    orders.forEach((order) => {
+    activeOrders.forEach((order) => {
       order.items.forEach((item) => {
         if (!itemMap[item.name]) {
           itemMap[item.name] = { quantity: 0, revenue: 0 };
@@ -91,7 +96,7 @@ const generateDailyReport = async () => {
       .slice(0, 10);
 
     const customerMap = {};
-    orders.forEach((order) => {
+    activeOrders.forEach((order) => {
       const key = order.phone;
       if (!customerMap[key]) {
         customerMap[key] = { name: order.customerName, phone: order.phone, orders: 0, totalSpent: 0 };
@@ -113,6 +118,7 @@ const generateDailyReport = async () => {
       endDate,
       data: {
         totalOrders,
+        cancelledOrders,
         totalRevenue,
         totalReservations,
         averageOrderValue,
@@ -166,6 +172,7 @@ const createZeroDailyReport = async () => {
     uniqueId: `daily-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     data: {
       totalOrders: 0,
+      cancelledOrders: 0,
       totalRevenue: 0,
       totalReservations: 0,
       averageOrderValue: 0,
