@@ -2,19 +2,40 @@
  * KUNLIK HISOBOT
  * Hisobotni generatsiya qilish, yangilash, reset qilish.
  * Yakunlangan zakaz/bronlarni o'chirish va hisobotni yangilash.
+ * Barcha sana hisoblari Toshkent vaqt zonasiga (UTC+5) moslashtirilgan.
  */
 import Order from "../models/Order.js";
 import Reservation from "../models/Reservation.js";
 import Report from "../models/Report.js";
 import { sendResetNotification } from "../services/telegramService.js";
 
+const TASHKENT_OFFSET_MS = 5 * 60 * 60 * 1000; // UTC+5
+
+// Toshkent vaqti bo'yicha "bugun"ning boshi va oxirini UTC Date obyektlari sifatida qaytaradi
 const getDailyDateRange = () => {
-  const now = new Date();
-  const startDate = new Date(now);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(now);
-  endDate.setHours(23, 59, 59, 999);
+  const nowTashkent = new Date(Date.now() + TASHKENT_OFFSET_MS);
+
+  const startDate = new Date(Date.UTC(
+    nowTashkent.getUTCFullYear(),
+    nowTashkent.getUTCMonth(),
+    nowTashkent.getUTCDate(),
+    0, 0, 0, 0
+  ) - TASHKENT_OFFSET_MS);
+
+  const endDate = new Date(Date.UTC(
+    nowTashkent.getUTCFullYear(),
+    nowTashkent.getUTCMonth(),
+    nowTashkent.getUTCDate(),
+    23, 59, 59, 999
+  ) - TASHKENT_OFFSET_MS);
+
   return { startDate, endDate };
+};
+
+// Toshkent vaqti bo'yicha "YYYY-MM-DD" formatidagi kun kodi (hisobot davri uchun)
+const getTashkentPeriodKey = (date) => {
+  const tashkentDate = new Date(date.getTime() + TASHKENT_OFFSET_MS);
+  return tashkentDate.toISOString().split("T")[0];
 };
 
 const getNextReportNumber = async () => {
@@ -83,7 +104,7 @@ const generateDailyReport = async () => {
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 5);
 
-    const period = startDate.toISOString().split("T")[0];
+    const period = getTashkentPeriodKey(startDate);
 
     return {
       type: "daily",
@@ -134,7 +155,7 @@ const upsertDailyReport = async () => {
 const createZeroDailyReport = async () => {
   const { startDate, endDate } = getDailyDateRange();
   const reportNumber = await getNextReportNumber();
-  const period = startDate.toISOString().split("T")[0];
+  const period = getTashkentPeriodKey(startDate);
 
   return await Report.create({
     reportNumber,

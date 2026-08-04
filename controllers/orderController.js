@@ -1,7 +1,7 @@
 /**
  * ZAKAZ CRUD
  * Zakaz yaratish, o'qish, status/delivery status yangilash, telefon orqali qidirish.
- * Zakaz yaratilganda hisobot yangilanadi va admin Telegram xabar yuboriladi.
+ * Zakaz yaratilganda/o'chirilganda hisobot avtomatik yangilanadi va admin Telegram xabar yuboriladi.
  */
 import Order from "../models/Order.js";
 import { sendOrderNotification } from "../services/telegramService.js";
@@ -200,6 +200,14 @@ export const deleteOrder = async (req, res) => {
     if (!order) {
       return res.status(404).json({ success: false, message: "Zakaz topilmadi" });
     }
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Zakaz o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
     res.json({ success: true, message: "✅ Zakaz o'chirildi" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -209,6 +217,14 @@ export const deleteOrder = async (req, res) => {
 export const deleteAllOrders = async (req, res) => {
   try {
     const result = await Order.deleteMany({});
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Barcha zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
     res.json({
       success: true,
       message: `✅ Barcha zakazlar o'chirildi (${result.deletedCount} ta)`,
@@ -223,6 +239,14 @@ export const deleteOrdersByStatus = async (req, res) => {
   try {
     const { status } = req.params;
     const result = await Order.deleteMany({ status });
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Status bo'yicha zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
+
     res.json({
       success: true,
       message: `✅ "${status}" statusli zakazlar o'chirildi (${result.deletedCount} ta)`,
@@ -242,6 +266,13 @@ export const deleteOldOrders = async (req, res) => {
     const result = await Order.deleteMany({
       createdAt: { $lt: date },
     });
+
+    try {
+      await generateDailyReportOnOrder();
+      console.log("✅ Eski zakazlar o'chirildi, kunlik hisobot yangilandi");
+    } catch (reportErr) {
+      console.error("❌ Hisobot yangilashda xatolik:", reportErr.message);
+    }
 
     res.json({
       success: true,
