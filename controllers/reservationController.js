@@ -85,7 +85,11 @@ export const createReservation = async (req, res) => {
 
     const reservation = await Reservation.create(reservationData);
 
-    await sendReservationNotification(reservation, table.number);
+    try {
+      await sendReservationNotification(reservation, table.number);
+    } catch (telegramErr) {
+      console.error("❌ Adminga Telegram xabar yuborishda xatolik:", telegramErr.message);
+    }
 
     res.status(201).json({ success: true, reservation });
   } catch (error) {

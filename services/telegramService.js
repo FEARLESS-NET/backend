@@ -107,7 +107,7 @@ export const sendOrderNotification = async (order) => {
     `🛒 <b>🔥 YANGI ZAKAZ!</b>\n` +
     `────────────────────\n` +
     `👤 Mijoz: ${order.customerName}\n` +
-    `📞 Tel: ${order.phone}\n` +
+    (order.deliveryType === "dine-in" ? "" : `📞 Tel: ${order.phone}\n`) +
     `📦 Taomlar:\n${items}\n` +
     `💰 Jami: ${order.totalPrice.toLocaleString()} so'm\n` +
     `🚚 Turi: ${typeLabel}\n` +

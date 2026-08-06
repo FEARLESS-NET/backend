@@ -95,15 +95,18 @@ const generateDailyReport = async () => {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10);
 
+    // Top mijozlar faqat dine-in bo'lmagan (telefon orqali kuzatiladigan) zakazlardan hisoblanadi
     const customerMap = {};
-    activeOrders.forEach((order) => {
-      const key = order.phone;
-      if (!customerMap[key]) {
-        customerMap[key] = { name: order.customerName, phone: order.phone, orders: 0, totalSpent: 0 };
-      }
-      customerMap[key].orders += 1;
-      customerMap[key].totalSpent += order.totalPrice || 0;
-    });
+    activeOrders
+      .filter((order) => order.deliveryType !== "dine-in")
+      .forEach((order) => {
+        const key = order.phone;
+        if (!customerMap[key]) {
+          customerMap[key] = { name: order.customerName, phone: order.phone, orders: 0, totalSpent: 0 };
+        }
+        customerMap[key].orders += 1;
+        customerMap[key].totalSpent += order.totalPrice || 0;
+      });
 
     const topCustomers = Object.values(customerMap)
       .sort((a, b) => b.totalSpent - a.totalSpent)
