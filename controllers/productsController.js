@@ -77,7 +77,7 @@ export const getMenu = async (req, res) => {
     console.error('❌ Menu xatosi:', error.message);
     res.status(500).json({ 
       success: false, 
-      message: error.message 
+      message: "Ma'lumotlarni yuklashda xatolik" 
     });
   }
 };
@@ -90,7 +90,8 @@ export const getOne = async (req, res) => {
     }
     res.json({ success: true, data: menu });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Get one error:', error.message);
+    res.status(500).json({ success: false, message: "Ma'lumot olishda xatolik" });
   }
 };
 
@@ -100,7 +101,6 @@ export const createMenu = async (req, res) => {
 
     if (req.files && req.files.image) {
       const file = req.files.image;
-
       try {
         imagePath = await uploadBufferToImgbb(file.data, file.name);
         console.log("📸 ImgBB'ga yuklandi:", imagePath);
@@ -108,7 +108,7 @@ export const createMenu = async (req, res) => {
         console.error("❌ ImgBB'ga yuklashda xatolik:", uploadErr.message);
         return res.status(500).json({
           success: false,
-          message: `Rasmni yuklashda xatolik: ${uploadErr.message}`,
+          message: "Rasmni yuklashda xatolik yuz berdi",
         });
       }
     } else if (req.body.image && req.body.image.trim()) {
@@ -121,7 +121,7 @@ export const createMenu = async (req, res) => {
           console.error("❌ Silkadan rasm yuklab bo'lmadi:", downloadErr.message);
           return res.status(400).json({
             success: false,
-            message: `Rasm silkasidan yuklab bo'lmadi: ${downloadErr.message}. Iltimos, rasmni fayl sifatida yuklang.`,
+            message: "Rasm URL manzilidan yuklab bo'lmadi. Iltimos, fayl sifatida yuklang.",
           });
         }
       } else {
@@ -148,7 +148,7 @@ export const createMenu = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Create menu error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Menu yaratishda xatolik" });
   }
 };
 
@@ -158,7 +158,6 @@ export const updateMenu = async (req, res) => {
 
     if (req.files && req.files.image) {
       const file = req.files.image;
-
       try {
         imagePath = await uploadBufferToImgbb(file.data, file.name);
         console.log("📸 Yangi rasm ImgBB'ga yuklandi:", imagePath);
@@ -166,7 +165,7 @@ export const updateMenu = async (req, res) => {
         console.error("❌ ImgBB'ga yuklashda xatolik:", uploadErr.message);
         return res.status(500).json({
           success: false,
-          message: `Rasmni yuklashda xatolik: ${uploadErr.message}`,
+          message: "Rasmni yuklashda xatolik yuz berdi",
         });
       }
     } else if (req.body.image && req.body.image.trim()) {
@@ -210,7 +209,7 @@ export const updateMenu = async (req, res) => {
     console.error("❌ Update menu error:", error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Menu yangilashda xatolik",
     });
   }
 };
@@ -230,6 +229,6 @@ export const deleteMenu = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Delete menu error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Menu o'chirishda xatolik" });
   }
 };
