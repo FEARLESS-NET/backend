@@ -1,10 +1,3 @@
-/**
- * ASOSIY SERVER
- * Express, CORS, Helmet, compression, fileUpload, rate limit.
- * Rasmlar endi ImgBB'da saqlanadi (server diskida emas).
- * Barcha routerlarni ulash.
- * MongoDB ulanish va Telegram pollingni ishga tushirish.
- */
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -38,16 +31,10 @@ import receiptRoutes from "./routes/receiptRouter.js";
 const app = express();
 const PORT = process.env.PORT || 3005;
 
-// ============================================
-// 1. XAVFSIZLIK MIDDLEWARE
-// ============================================
-
-// Helmet
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
-// File upload
 app.use(fileUpload({
   limits: { fileSize: 10 * 1024 * 1024 },
   abortOnLimit: true,
@@ -57,7 +44,6 @@ app.use(fileUpload({
   preserveExtension: true,
 }));
 
-// CORS
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "https://qrcode-4-hqdm.onrender.com",
@@ -74,7 +60,6 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`⚠️ CORS bloklandi: ${origin}`);
       callback(new Error('CORS ruxsat berilmadi'));
     }
   },
@@ -87,22 +72,15 @@ app.use(cors({
 
 app.options('*', cors());
 
-// JSON va URL encoded
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(compression({ level: 6, threshold: 1024 }));
 
-
-// Timeout
 app.use((req, res, next) => {
   req.setTimeout(60000);
   res.setTimeout(60000);
   next();
 });
-
-// ============================================
-// 2. RATE LIMITING
-// ============================================
 
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -120,7 +98,6 @@ const adminLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Admin endpointlarga maxsus limiter
 app.use('/api/v1/tables', adminLimiter);
 app.use('/api/v1/menus', adminLimiter);
 app.use('/api/v1/reservations', adminLimiter);
@@ -131,21 +108,30 @@ app.use('/api/v1/payments', adminLimiter);
 app.use(generalLimiter);
 
 // ============================================
-// 3. ROUTERLAR (TO'G'RI TARTIBDA)
+// ROUTERLAR
 // ============================================
 
-// 3.1. AUTH ROUTER (login va verify - HIMOYASIZ) - BIRINCHI!
+// Yordamchi middleware - faqat write operatsiyalarni himoyalaydi
+const protectWrite = (req, res, next) => {
+  const writeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (writeMethods.includes(req.method)) {
+    return verifyToken(req, res, next);
+  }
+  next();
+};
+
+// 1. AUTH ROUTER (login va verify - HIMOYASIZ)
 app.use('/api/v1', authRouter);
 
-// 3.2. 🔒 ADMIN ENDPOINTLARNI HIMOYALASH (verifyToken)
-app.use('/api/v1/menus', verifyToken);
-app.use('/api/v1/tables', verifyToken);
-app.use('/api/v1/reservations', verifyToken);
-app.use('/api/v1/orders', verifyToken);
-app.use('/api/v1/reports', verifyToken);
-app.use('/api/v1/payments', verifyToken);
+// 2. ADMIN ENDPOINTLAR - GET (public), POST/PUT/DELETE (himoyalangan)
+app.use('/api/v1/menus', protectWrite);
+app.use('/api/v1/tables', protectWrite);
+app.use('/api/v1/reservations', protectWrite);
+app.use('/api/v1/orders', protectWrite);
+app.use('/api/v1/reports', protectWrite);
+app.use('/api/v1/payments', protectWrite);
 
-// 3.3. QOLGAN ROUTERLAR
+// 3. QOLGAN ROUTERLAR
 app.use("/api/v1", productRouter);
 app.use("/api/v1", tableRouter);
 app.use("/api/v1", reservationRouter);
@@ -154,10 +140,6 @@ app.use("/api/v1", paymentRouter);
 app.use("/api/v1", reportRouter);
 app.use("/api/v1", telegramRoutes);
 app.use("/api/v1", receiptRoutes);
-
-// ============================================
-// 4. HEALTH CHECK
-// ============================================
 
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -169,43 +151,28 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ============================================
-// 5. 404 HANDLER
-// ============================================
-
 app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: `Route topilmadi: ${req.originalUrl}` 
+  res.status(404).json({
+    success: false,
+    message: `Route topilmadi: ${req.originalUrl}`
   });
 });
 
-// ============================================
-// 6. XATOLIKLARNI BOSHQARISH
-// ============================================
-
 app.use((err, req, res, next) => {
-  console.error('❌ Server xatosi:', err.message);
-  console.error(err.stack);
-
   if (err.message.includes('CORS')) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'CORS ruxsat berilmadi' 
+    return res.status(403).json({
+      success: false,
+      message: 'CORS ruxsat berilmadi'
     });
   }
 
   const status = err.status || 500;
   const message = status === 500 ? 'Serverda ichki xatolik yuz berdi' : err.message;
-  res.status(status).json({ 
-    success: false, 
-    message 
+  res.status(status).json({
+    success: false,
+    message
   });
 });
-
-// ============================================
-// 7. SERVERNI ISHGA TUSHIRISH
-// ============================================
 
 const startServer = async () => {
   try {
@@ -217,13 +184,12 @@ const startServer = async () => {
 
     const server = app.listen(PORT, () => {
       console.log(`✅ Server ishga tushdi: http://localhost:${PORT}`);
-      console.log(`✅ Ruxsat etilgan originlar:`, allowedOrigins);
     });
 
     server.timeout = 60000;
     server.keepAliveTimeout = 60000;
   } catch (error) {
-    console.error("❌ Serverni ishga tushirishda xatolik:", error.message);
+    console.error("❌ Server xatosi:", error.message);
     setTimeout(startServer, 10000);
   }
 };
